@@ -320,6 +320,17 @@ export default function AdminView({
 
   // Bulk Operations Queue State
   const [bulkQueue, setBulkQueue] = useState<UploadTask[]>([]);
+  const [batchTotal, setBatchTotal] = useState(0);
+  const [batchCompleted, setBatchCompleted] = useState(0);
+  const [batchTimeRemaining, setBatchTimeRemaining] = useState<number | null>(null);
+
+  const formatTimeRemaining = (secs: number | null): string => {
+    if (secs === null || secs <= 0) return "calcul...";
+    if (secs < 60) return `~ ${secs}s`;
+    const mins = Math.floor(secs / 60);
+    const remainingSecs = secs % 60;
+    return `~ ${mins}m ${remainingSecs}s`;
+  };
 
   // Cloudinary Folder Sync State
   const [syncFolderPath, setSyncFolderPath] = useState('');
@@ -738,7 +749,8 @@ export default function AdminView({
     file: File, 
     targetClientId?: string, 
     targetCategory?: CategoryTab,
-    batchUploadedNames?: Set<string>
+    batchUploadedNames?: Set<string>,
+    existingTaskId?: string
   ): Promise<WeddingPhoto | null> => {
     const targetCat = targetCategory || uploadCategory;
     const lastDotIndex = file.name.lastIndexOf('.');
@@ -757,27 +769,32 @@ export default function AdminView({
     const inBatch = batchUploadedNames && batchUploadedNames.has(baseNameLower);
 
     if (inDb || inBatch) {
-      const taskId = `task-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
-      const newTask: UploadTask = {
-        id: taskId,
-        name: file.name,
-        progress: 100,
-        status: 'error',
-        errorMsg: `La photo "${file.name}" a déjà été ajoutée à ce projet sous la catégorie "${targetCat}". Doublon ignoré.`
-      };
-      setBulkQueue(prev => [newTask, ...prev]);
+      const taskId = existingTaskId || `task-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
+      if (existingTaskId) {
+        setBulkQueue(prev => prev.map(t => t.id === taskId ? { ...t, status: 'error', progress: 100, errorMsg: `La photo "${file.name}" a déjà été ajoutée à ce projet sous la catégorie "${targetCat}". Doublon ignoré.` } : t));
+      } else {
+        const newTask: UploadTask = {
+          id: taskId,
+          name: file.name,
+          progress: 100,
+          status: 'error',
+          errorMsg: `La photo "${file.name}" a déjà été ajoutée à ce projet sous la catégorie "${targetCat}". Doublon ignoré.`
+        };
+        setBulkQueue(prev => [newTask, ...prev]);
+      }
       throw new Error(`La photo "${file.name}" est un doublon et a été ignorée.`);
     }
 
-    const taskId = `task-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
-    const newTask: UploadTask = {
-      id: taskId,
-      name: file.name,
-      progress: 0,
-      status: 'pending'
-    };
-    
-    setBulkQueue(prev => [newTask, ...prev]);
+    const taskId = existingTaskId || `task-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
+    if (!existingTaskId) {
+      const newTask: UploadTask = {
+        id: taskId,
+        name: file.name,
+        progress: 0,
+        status: 'pending'
+      };
+      setBulkQueue(prev => [newTask, ...prev]);
+    }
 
     const activeCloudinary = getCloudinarySettings();
     const finalCloudinary = (cloudinary.cloudName && cloudinary.uploadPreset) ? cloudinary : activeCloudinary;
@@ -876,12 +893,35 @@ export default function AdminView({
     setUploadError('');
     setUploadSuccess('');
     
+    const count = files.length;
+    setBatchTotal(count);
+    setBatchCompleted(0);
+    setBatchTimeRemaining(null);
+
+    // 1. Pre-create tasks for all files in this batch
+    const tasks: UploadTask[] = [];
+    const taskIds: string[] = [];
+    for (let i = 0; i < count; i++) {
+      const taskId = `task-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
+      taskIds.push(taskId);
+      tasks.push({
+        id: taskId,
+        name: files[i].name,
+        progress: 0,
+        status: 'pending'
+      });
+    }
+
+    // Prepend all tasks to the bulkQueue at once
+    setBulkQueue(prev => [...tasks, ...prev]);
+
     const newPhotos: WeddingPhoto[] = [];
     const batchUploadedNames = new Set<string>();
+    const startTime = Date.now();
 
-    for (let i = 0; i < files.length; i++) {
+    for (let i = 0; i < count; i++) {
       try {
-        const photo = await processSingleUpload(files[i], targetClientId, targetCategory, batchUploadedNames);
+        const photo = await processSingleUpload(files[i], targetClientId, targetCategory, batchUploadedNames, taskIds[i]);
         if (photo) {
           newPhotos.push(photo);
           const baseName = files[i].name.split('.')[0] || '';
@@ -892,6 +932,20 @@ export default function AdminView({
         if (err.message && !err.message.includes("est un doublon")) {
           setUploadError(err.message || "Échec d'importation d'une image");
         }
+      }
+
+      // Update completed count and estimate time remaining
+      const completed = i + 1;
+      setBatchCompleted(completed);
+      
+      if (completed < count) {
+        const elapsedMs = Date.now() - startTime;
+        const msPerFile = elapsedMs / completed;
+        const remainingFiles = count - completed;
+        const estRemainingSec = Math.round((remainingFiles * msPerFile) / 1000);
+        setBatchTimeRemaining(estRemainingSec);
+      } else {
+        setBatchTimeRemaining(null);
       }
     }
 
@@ -3876,10 +3930,28 @@ export default function AdminView({
                             />
 
                             {isUploading ? (
-                              <div className="py-2 flex flex-col items-center gap-1.5">
-                                <RefreshCw className="w-6 h-6 text-brand-gold animate-spin" />
-                                <p className="text-xs font-bold text-brand-olive">Téléversement asynchrone pour {targetClient.name}...</p>
-                                <p className="text-[9px] text-brand-sage">Veuillez patienter pendant le traitement...</p>
+                              <div className="py-3 flex flex-col items-center justify-center gap-3.5 w-full px-4 text-center animate-pulse">
+                                <div className="flex items-center gap-2">
+                                  <RefreshCw className="w-5 h-5 text-brand-gold animate-spin" />
+                                  <span className="text-xs font-black text-brand-olive uppercase tracking-widest font-serif-display">
+                                    Traitement et Envoi ({batchCompleted} / {batchTotal})
+                                  </span>
+                                </div>
+                                
+                                {/* Progress bar container */}
+                                <div className="w-full bg-brand-sand/35 h-2.5 rounded-full overflow-hidden relative shadow-inner">
+                                  <div 
+                                    className="h-full bg-gradient-to-r from-brand-gold via-brand-olive to-brand-gold transition-all duration-300 rounded-full" 
+                                    style={{ width: `${batchTotal > 0 ? (batchCompleted / batchTotal) * 100 : 0}%` }}
+                                  />
+                                </div>
+
+                                <div className="flex justify-between w-full text-[9.5px] font-black uppercase text-brand-sage tracking-wider">
+                                  <span>{batchTotal > 0 ? Math.round((batchCompleted / batchTotal) * 100) : 0}% complété</span>
+                                  <span>
+                                    {batchTimeRemaining !== null ? `Temps : ${formatTimeRemaining(batchTimeRemaining)}` : 'Calcul restant...'}
+                                  </span>
+                                </div>
                               </div>
                             ) : (
                               <div className="py-1 space-y-2 animate-fade-in-up w-full">
@@ -4549,10 +4621,28 @@ export default function AdminView({
                   />
 
                   {isUploading ? (
-                    <div className="py-2 flex flex-col items-center gap-1.5">
-                      <RefreshCw className="w-6 h-6 text-brand-gold animate-spin" />
-                      <p className="text-xs font-bold text-brand-olive">Téléchargement asynchrone multiple en cours...</p>
-                      <p className="text-[9px] text-brand-sage">Veuillez patienter pendant le tri du dossier</p>
+                    <div className="py-3 flex flex-col items-center justify-center gap-3.5 w-full px-4 text-center animate-pulse">
+                      <div className="flex items-center gap-2">
+                        <RefreshCw className="w-5 h-5 text-brand-gold animate-spin" />
+                        <span className="text-xs font-black text-brand-olive uppercase tracking-widest font-serif-display">
+                          Importation de masse ({batchCompleted} / {batchTotal})
+                        </span>
+                      </div>
+                      
+                      {/* Progress bar container */}
+                      <div className="w-full bg-brand-sand/35 h-2.5 rounded-full overflow-hidden relative shadow-inner">
+                        <div 
+                          className="h-full bg-gradient-to-r from-brand-gold via-brand-olive to-brand-gold transition-all duration-300 rounded-full" 
+                          style={{ width: `${batchTotal > 0 ? (batchCompleted / batchTotal) * 100 : 0}%` }}
+                        />
+                      </div>
+
+                      <div className="flex justify-between w-full text-[9.5px] font-black uppercase text-brand-sage tracking-wider">
+                        <span>{batchTotal > 0 ? Math.round((batchCompleted / batchTotal) * 100) : 0}% complété</span>
+                        <span>
+                          {batchTimeRemaining !== null ? `Temps : ${formatTimeRemaining(batchTimeRemaining)}` : 'Calcul restant...'}
+                        </span>
+                      </div>
                     </div>
                   ) : (
                     <div className="py-1 space-y-1.5">
