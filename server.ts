@@ -35,6 +35,7 @@ const DB_PATH = path.join(process.cwd(), "database.json");
 const CLOUDINARY_CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME || "";
 const CLOUDINARY_API_KEY = process.env.CLOUDINARY_API_KEY || "";
 const CLOUDINARY_API_SECRET = process.env.CLOUDINARY_API_SECRET || "";
+const CLOUDINARY_UPLOAD_PRESET = process.env.CLOUDINARY_UPLOAD_PRESET || "";
 
 function cloudinaryConfigured() {
   return !!(CLOUDINARY_CLOUD_NAME && CLOUDINARY_API_KEY && CLOUDINARY_API_SECRET);
@@ -538,7 +539,7 @@ async function fetchFullDatabase(): Promise<DBStructure> {
       categoryLabels: { Dot: "Dot", Globale: "Classique", Album: "Album" },
       cloudinarySettings: {
         cloudName: CLOUDINARY_CLOUD_NAME,
-        uploadPreset: ""
+        uploadPreset: CLOUDINARY_UPLOAD_PRESET
       }
     };
   } catch (err) {
@@ -548,7 +549,7 @@ async function fetchFullDatabase(): Promise<DBStructure> {
       clientsList: [],
       chatMessages: {},
       categoryLabels: { Dot: "Dot", Globale: "Classique", Album: "Album" },
-      cloudinarySettings: { cloudName: CLOUDINARY_CLOUD_NAME, uploadPreset: "" }
+      cloudinarySettings: { cloudName: CLOUDINARY_CLOUD_NAME, uploadPreset: CLOUDINARY_UPLOAD_PRESET }
     };
   }
 }
@@ -1112,14 +1113,16 @@ async function startServer() {
   });
 }
 
-try {
-  startServer().catch((err) => {
-    console.error("STARTUP ERROR (async):", err);
+if (process.env.NO_SERVER_START !== "true") {
+  try {
+    startServer().catch((err) => {
+      console.error("STARTUP ERROR (async):", err);
+      process.exit(1);
+    });
+  } catch (err) {
+    console.error("STARTUP ERROR (sync):", err);
     process.exit(1);
-  });
-} catch (err) {
-  console.error("STARTUP ERROR (sync):", err);
-  process.exit(1);
+  }
 }
 
 
