@@ -1085,7 +1085,5 @@ async function startServer() {
   });
 }
 
-if (process.argv[1] && (process.argv[1].endsWith('server.ts') || process.argv[1].endsWith('server.cjs') || process.argv[1].includes('dist/server.cjs') || process.argv[1].includes('server.ts'))) {
-  startServer();
-}
+startServer();
 
