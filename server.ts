@@ -1060,7 +1060,12 @@ app.post("/api/mcp/message", async (req, res) => {
    ======================================================== */
 
 async function startServer() {
-  if (process.env.NODE_ENV !== "production") {
+  const isProduction = process.env.NODE_ENV === "production" || 
+                       !process.argv[1] || 
+                       !process.argv[1].endsWith("server.ts");
+
+  if (!isProduction) {
+    console.log("Starting server in DEVELOPMENT mode (Vite middleware)...");
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
@@ -1068,6 +1073,7 @@ async function startServer() {
     // Protect our API routes, let Vite handle all other static routes
     app.use(vite.middlewares);
   } else {
+    console.log("Starting server in PRODUCTION mode (Static files from dist)...");
     const distPath = path.join(process.cwd(), "dist");
     app.use(express.static(distPath));
     app.get("*", (req, res) => {
@@ -1085,5 +1091,24 @@ async function startServer() {
   });
 }
 
-startServer();
+process.on("uncaughtException", (err) => {
+  console.error("UNCAUGHT EXCEPTION ON STARTUP:", err);
+  process.exit(1);
+});
+
+process.on("unhandledRejection", (reason, promise) => {
+  console.error("UNHANDLED REJECTION ON STARTUP at:", promise, "reason:", reason);
+  process.exit(1);
+});
+
+try {
+  startServer().catch((err) => {
+    console.error("STARTUP ERROR (async):", err);
+    process.exit(1);
+  });
+} catch (err) {
+  console.error("STARTUP ERROR (sync):", err);
+  process.exit(1);
+}
+
 
