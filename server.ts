@@ -10,7 +10,7 @@ dotenv.config({ path: ".env.local", override: true });
 // Bypass SSL certificate validation errors (common on some networks/machines)
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 
-const app = express();
+export const app = express();
 const PORT = process.env.PORT || 3001;
 
 app.use(express.json({ limit: "100mb" }));
