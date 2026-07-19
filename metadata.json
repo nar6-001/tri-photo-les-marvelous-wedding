@@ -1,0 +1,6 @@
+{
+  "name": "Maison Marvel — L'Album de Noces",
+  "description": "Une application interactive haut de gamme pour la sélection des photographies de mariage par Maison Marvel.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
