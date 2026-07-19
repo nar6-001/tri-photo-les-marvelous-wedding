@@ -1,3 +1,13 @@
+process.on("uncaughtException", (err) => {
+  console.log("UNCAUGHT EXCEPTION ON LOAD:", err.stack || err);
+  process.exit(1);
+});
+process.on("unhandledRejection", (reason, promise) => {
+  console.log("UNHANDLED REJECTION ON LOAD:", reason);
+  process.exit(1);
+});
+console.error = console.log;
+
 import express from "express";
 import path from "path";
 import fs from "fs";
@@ -1090,16 +1100,6 @@ async function startServer() {
     console.log(`===============================================`);
   });
 }
-
-process.on("uncaughtException", (err) => {
-  console.error("UNCAUGHT EXCEPTION ON STARTUP:", err);
-  process.exit(1);
-});
-
-process.on("unhandledRejection", (reason, promise) => {
-  console.error("UNHANDLED REJECTION ON STARTUP at:", promise, "reason:", reason);
-  process.exit(1);
-});
 
 try {
   startServer().catch((err) => {
