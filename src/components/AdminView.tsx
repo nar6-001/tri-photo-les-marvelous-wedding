@@ -779,7 +779,11 @@ export default function AdminView({
     
     setBulkQueue(prev => [newTask, ...prev]);
 
-    const useRealCloudinary = cloudinary.cloudName && cloudinary.uploadPreset;
+    const activeCloudinary = getCloudinarySettings();
+    const finalCloudinary = (cloudinary.cloudName && cloudinary.uploadPreset) ? cloudinary : activeCloudinary;
+    const useRealCloudinary = !!(finalCloudinary.cloudName && finalCloudinary.uploadPreset);
+
+    console.log("processSingleUpload starting. File:", file.name, "useRealCloudinary:", useRealCloudinary, "settings:", finalCloudinary);
 
     try {
       setBulkQueue(prev => prev.map(t => t.id === taskId ? { ...t, status: 'uploading', progress: 15 } : t));
@@ -797,7 +801,7 @@ export default function AdminView({
 
         const formData = new FormData();
         formData.append('file', fileToUpload);
-        formData.append('upload_preset', cloudinary.uploadPreset);
+        formData.append('upload_preset', finalCloudinary.uploadPreset);
 
         // Dynamically organize into Cloudinary folders mimicking the app structure
         let folderPath = "Mariages/Global";
@@ -814,7 +818,7 @@ export default function AdminView({
         formData.append('folder', folderPath);
 
         const response = await fetch(
-          `https://api.cloudinary.com/v1_1/${cloudinary.cloudName}/image/upload`,
+          `https://api.cloudinary.com/v1_1/${finalCloudinary.cloudName}/image/upload`,
           { method: 'POST', body: formData }
         );
 
@@ -832,9 +836,9 @@ export default function AdminView({
           
           // Translate common Cloudinary errors to friendly French explanations
           if (errMessage.includes("Upload preset") && errMessage.includes("not found")) {
-            errMessage = `Le preset "${cloudinary.uploadPreset}" est introuvable. Veuillez vérifier l'orthographe dans l'onglet Configuration et l'existence du preset dans votre console Cloudinary.`;
+            errMessage = `Le preset "${finalCloudinary.uploadPreset}" est introuvable. Veuillez vérifier l'orthographe dans l'onglet Configuration et l'existence du preset dans votre console Cloudinary.`;
           } else if (errMessage.includes("must be unsigned")) {
-            errMessage = `Le preset "${cloudinary.uploadPreset}" existe mais est configuré en mode "Signed" (Signé). Vous devez modifier ses paramètres dans votre console Cloudinary et le régler sur "Unsigned" (Non-signé).`;
+            errMessage = `Le preset "${finalCloudinary.uploadPreset}" existe mais est configuré en mode "Signed" (Signé). Vous devez modifier ses paramètres dans votre console Cloudinary et le régler sur "Unsigned" (Non-signé).`;
           }
           
           throw new Error(`Erreur Cloudinary : ${errMessage}`);
