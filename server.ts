@@ -426,10 +426,21 @@ import { createClient } from "@supabase/supabase-js";
 
 // Initialize Supabase Client
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL || "https://itpweepyypseuwemxzfd.supabase.co";
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-  auth: { persistSession: false }
-});
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || "";
+
+let supabase: any;
+if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+  console.log("⚠️ Supabase credentials missing or incomplete. Using dummy client to prevent crash.");
+  supabase = createClient(
+    SUPABASE_URL || "https://example.supabase.co",
+    SUPABASE_SERVICE_ROLE_KEY || "dummy-key-to-prevent-startup-crash",
+    { auth: { persistSession: false } }
+  );
+} else {
+  supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+    auth: { persistSession: false }
+  });
+}
 
 // In-Memory Chat list that loads/saves with the DB
 interface ChatMessage {
