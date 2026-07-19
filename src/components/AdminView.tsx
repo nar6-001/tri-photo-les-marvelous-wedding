@@ -5,7 +5,7 @@ import {
   Check, AlertCircle, RefreshCw, Key, HelpCircle, ArrowLeft, Bookmark,
   MessageSquare, Lock, Unlock, Link as LinkIcon, Filter, Camera, FileImage,
   FolderOpen, Send, Copy, Search, Calendar, Globe, X, ZoomIn, Clock, ChevronLeft, ChevronRight,
-  Command, Pin, Bell, Eye, EyeOff, Hash, MoreVertical, Sparkles, Tag, Star, Edit2, Archive
+  Command, Pin, Bell, Eye, EyeOff, Hash, MoreVertical, Sparkles, Tag, Star, Edit2, Archive, Terminal
 } from 'lucide-react';
 import ZoomLightbox from './ZoomLightbox';
 import { SmartImage, ConfirmModal } from './Shared';
@@ -182,10 +182,15 @@ export default function AdminView({
 }: AdminViewProps) {
   const [activeSubTab, setActiveSubTab] = useState<'clients' | 'messages' | 'photos' | 'settings'>('clients');
 
-  // New main navigation: Dashboard / Couples / Messages / Gallery / Settings
-  // (kept activeSubTab for backward-compat with existing inner logic; will be deprecated gradually)
-  type MainSection = 'dashboard' | 'clients' | 'messages' | 'gallery' | 'settings';
+  // New main navigation: Dashboard / Couples / Messages / Gallery / Settings / Logs
+  type MainSection = 'dashboard' | 'clients' | 'messages' | 'gallery' | 'settings' | 'logs';
   const [activeSection, setActiveSection] = useState<MainSection>('dashboard');
+  
+  // System logs state
+  const [logs, setLogs] = useState<{ timestamp: string; level: string; message: string }[]>([]);
+  const [logsFilter, setLogsFilter] = useState<'all' | 'info' | 'warn' | 'error'>('all');
+  const [logsSearch, setLogsSearch] = useState('');
+  const [isLoadingLogs, setIsLoadingLogs] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [cloudinary, setCloudinary] = useState<CloudinarySettings>(getCloudinarySettings());
   const [photos, setPhotos] = useState<WeddingPhoto[]>(getGlobalPhotos());
@@ -440,6 +445,32 @@ export default function AdminView({
       setCloudNameInput(serverStatus.cloudName);
     }
   }, [serverStatus, cloudNameInput]);
+
+  // Fetch system logs on demand or on tab activation
+  const fetchLogs = async () => {
+    setIsLoadingLogs(true);
+    try {
+      const res = await fetch("/api/admin/logs");
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) {
+          setLogs(data.logs || []);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch server logs:", err);
+    } finally {
+      setIsLoadingLogs(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeSection === 'logs') {
+      fetchLogs();
+      const interval = setInterval(fetchLogs, 4000); // refresh every 4 seconds
+      return () => clearInterval(interval);
+    }
+  }, [activeSection]);
 
   // 1. CLOUD SETTINGS ACTIONS
   const handleSaveCloudinary = (e: React.FormEvent) => {
@@ -1297,7 +1328,8 @@ export default function AdminView({
     { key: 'clients', label: 'Couples', Icon: Users, badge: clients.length, color: 'var(--section-couples, #C2A679)' },
     { key: 'messages', label: 'Messages', Icon: MessageSquare, badge: Object.values(unreadByClient).filter(Boolean).length, color: 'var(--section-messages, #A56B47)' },
     { key: 'gallery', label: 'Galerie', Icon: ImageIcon, badge: photos.length, color: 'var(--section-gallery, #8A9A7E)' },
-    { key: 'settings', label: 'Réglages', Icon: Settings, color: 'var(--section-settings, #3E4634)' }
+    { key: 'settings', label: 'Réglages', Icon: Settings, color: 'var(--section-settings, #3E4634)' },
+    { key: 'logs', label: 'Logs Système', Icon: Terminal, color: '#A3704C' }
   ];
 
   // Couple detail sub-nav items
@@ -1414,7 +1446,7 @@ export default function AdminView({
                   { label: "Couples", onClick: closeCouple },
                   { label: clients.find(c => c.id === enteredClientId)?.name || "Couple" }
                 ] : [
-                  { label: activeSection === 'dashboard' ? 'Accueil' : activeSection === 'clients' ? 'Couples' : activeSection === 'messages' ? 'Messages' : activeSection === 'gallery' ? 'Galerie' : 'Réglages' }
+                  { label: activeSection === 'dashboard' ? 'Accueil' : activeSection === 'clients' ? 'Couples' : activeSection === 'messages' ? 'Messages' : activeSection === 'gallery' ? 'Galerie' : activeSection === 'logs' ? 'Logs Système' : 'Réglages' }
                 ])
               ]}
             />
@@ -3856,6 +3888,24 @@ export default function AdminView({
                                 + {label}
                               </button>
                             ))}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const folderName = prompt("Entrez le nom du nouveau dossier personnalisé (ex: Église, Soirée, Groupe) :");
+                                if (folderName && folderName.trim()) {
+                                  const labelClean = folderName.trim();
+                                  const key = `custom-${labelClean.toLowerCase().replace(/[^a-z0-9]/g, "-")}-${Date.now().toString(36).substr(-4)}`;
+                                  const currentLabels = targetClient.categoryLabels || categoryLabels;
+                                  const updated = { ...currentLabels, [key]: labelClean };
+                                  handleUpdateClientQuotas(targetClient.id, { categoryLabels: updated });
+                                  setProjectUploadCategory(key as CategoryTab);
+                                  toast.success(`Dossier "${labelClean}" créé avec succès !`);
+                                }
+                              }}
+                              className="text-[10px] px-3 py-1 rounded-full bg-brand-sand/50 border border-[#a47b38] text-brand-olive hover:bg-brand-gold hover:text-white transition-all cursor-pointer font-bold flex items-center gap-0.5"
+                            >
+                              📁 + Créer un dossier perso
+                            </button>
                           </div>
                           {([
                             ['dot', 'Dot'],
@@ -5233,6 +5283,108 @@ export default function AdminView({
               </p>
             </div>
 
+          </div>
+        )}
+
+        {/* ==================== SYSTEM LOGS PANEL ==================== */}
+        {activeSection === 'logs' && (
+          <div className="space-y-4 text-left h-full flex flex-col pb-4 animate-fade-in">
+            <div className="bg-white border border-brand-sand rounded-xl p-4 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
+              <div>
+                <h3 className="text-xs text-brand-olive font-extrabold uppercase tracking-widest flex items-center gap-1.5 font-serif-display">
+                  <Terminal className="w-4 h-4 text-[#A3704C]" /> Diagnostic & Logs Système
+                </h3>
+                <p className="text-[10px] text-brand-sage leading-relaxed mt-0.5">
+                  Visualisez en temps réel l'activité du serveur Node.js, les uploads Cloudinary et les requêtes PostgreSQL Supabase.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={fetchLogs}
+                  disabled={isLoadingLogs}
+                  className="px-3 py-1.5 bg-brand-cream hover:bg-brand-sand text-brand-olive border border-brand-sand rounded-lg text-[10px] font-bold cursor-pointer disabled:opacity-50 uppercase tracking-wider flex items-center gap-1"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isLoadingLogs ? 'animate-spin' : ''}`} />
+                  Actualiser
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLogs([])}
+                  className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-lg text-[10px] font-bold cursor-pointer uppercase tracking-wider flex items-center gap-1"
+                >
+                  Vider l'écran
+                </button>
+              </div>
+            </div>
+
+            {/* Filters and search */}
+            <div className="bg-white border border-brand-sand rounded-xl p-3 shadow-xs shrink-0 flex flex-col sm:flex-row items-center gap-3">
+              <div className="flex rounded-lg overflow-hidden border border-brand-sand/70 p-0.5 bg-brand-cream/40">
+                {(['all', 'info', 'warn', 'error'] as const).map(f => (
+                  <button
+                    key={f}
+                    onClick={() => setLogsFilter(f)}
+                    className={`px-3 py-1 rounded text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer ${
+                      logsFilter === f ? 'bg-[#A3704C] text-white shadow-xs' : 'text-brand-sage hover:text-brand-olive'
+                    }`}
+                  >
+                    {f === 'all' ? 'Tous' : f}
+                  </button>
+                ))}
+              </div>
+              
+              <div className="flex-1 w-full relative">
+                <Search className="w-3.5 h-3.5 text-brand-sage absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Rechercher dans les messages des logs..."
+                  value={logsSearch}
+                  onChange={(e) => setLogsSearch(e.target.value)}
+                  className="w-full bg-brand-cream/30 border border-brand-sand rounded-lg pl-8 pr-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-brand-gold/60 text-brand-olive"
+                />
+                {logsSearch && (
+                  <button onClick={() => setLogsSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-sage hover:text-brand-olive font-black text-xs">
+                    ✕
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Terminal Console View */}
+            <div className="flex-1 bg-zinc-950 text-zinc-200 font-mono text-[10px] p-4 rounded-xl border border-zinc-800 shadow-2xl overflow-y-auto space-y-1.5 scrollbar-thin scrollbar-thumb-zinc-800 min-h-[300px]">
+              {(() => {
+                const filteredLogs = logs.filter(log => {
+                  if (logsFilter !== 'all' && log.level !== logsFilter) return false;
+                  if (logsSearch && !log.message.toLowerCase().includes(logsSearch.toLowerCase())) return false;
+                  return true;
+                });
+
+                if (filteredLogs.length === 0) {
+                  return (
+                    <div className="h-full flex flex-col items-center justify-center text-zinc-500 py-12">
+                      <Terminal className="w-8 h-8 opacity-25 mb-2" />
+                      <span>Aucun log enregistré ou correspondant aux critères</span>
+                    </div>
+                  );
+                }
+
+                return filteredLogs.map((log, idx) => {
+                  const time = new Date(log.timestamp).toLocaleTimeString();
+                  let levelColor = 'text-sky-400';
+                  if (log.level === 'warn') levelColor = 'text-amber-400';
+                  else if (log.level === 'error') levelColor = 'text-rose-500 font-bold';
+
+                  return (
+                    <div key={idx} className="flex gap-2 hover:bg-zinc-900/60 p-0.5 rounded transition-colors group">
+                      <span className="text-zinc-600 select-none group-hover:text-zinc-500 shrink-0">{time}</span>
+                      <span className={`${levelColor} shrink-0 select-none`}>[{log.level.toUpperCase()}]</span>
+                      <span className="text-zinc-300 break-all select-text whitespace-pre-wrap">{log.message}</span>
+                    </div>
+                  );
+                });
+              })()}
+            </div>
           </div>
         )}
 

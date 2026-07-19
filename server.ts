@@ -1,12 +1,45 @@
+// System Logs Buffer
+export const systemLogs: { timestamp: string; level: string; message: string }[] = [];
+const maxSystemLogs = 300;
+
+function addSystemLog(level: string, ...args: any[]) {
+  const message = args.map(arg => {
+    if (arg instanceof Error) return arg.stack || arg.message;
+    return typeof arg === 'object' ? JSON.stringify(arg) : String(arg);
+  }).join(' ');
+  
+  systemLogs.push({
+    timestamp: new Date().toISOString(),
+    level,
+    message
+  });
+  
+  if (systemLogs.length > maxSystemLogs) {
+    systemLogs.shift();
+  }
+}
+
+const originalLog = console.log;
+const originalError = console.error;
+
+console.log = (...args: any[]) => {
+  originalLog.apply(console, args);
+  addSystemLog('info', ...args);
+};
+
+console.error = (...args: any[]) => {
+  originalError.apply(console, args);
+  addSystemLog('error', ...args);
+};
+
 process.on("uncaughtException", (err) => {
-  console.log("UNCAUGHT EXCEPTION ON LOAD:", err.stack || err);
+  console.error("UNCAUGHT EXCEPTION ON LOAD:", err.stack || err);
   process.exit(1);
 });
 process.on("unhandledRejection", (reason, promise) => {
-  console.log("UNHANDLED REJECTION ON LOAD:", reason);
+  console.error("UNHANDLED REJECTION ON LOAD:", reason);
   process.exit(1);
 });
-console.error = console.log;
 
 import express from "express";
 import path from "path";
@@ -659,6 +692,11 @@ app.post("/api/photos", async (req, res) => {
     if (error) console.error("Upsert photo error:", error);
   }
   res.json({ success: true });
+});
+
+// Admin System Logs API
+app.get("/api/admin/logs", (req, res) => {
+  res.json({ success: true, logs: systemLogs });
 });
 
 app.post("/api/categories", async (req, res) => {
