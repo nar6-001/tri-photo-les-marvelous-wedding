@@ -785,8 +785,18 @@ export default function AdminView({
       setBulkQueue(prev => prev.map(t => t.id === taskId ? { ...t, status: 'uploading', progress: 15 } : t));
 
       if (useRealCloudinary) {
+        let fileToUpload: File | string = file;
+        if (file.type.startsWith('image/')) {
+          try {
+            // Compresser l'image à 2048px max (excellent rendu HD) et 80% de qualité
+            fileToUpload = await compressImage(file, 2048, 2048, 0.80);
+          } catch (e) {
+            console.warn("Compression échouée, envoi de l'image originale :", e);
+          }
+        }
+
         const formData = new FormData();
-        formData.append('file', file);
+        formData.append('file', fileToUpload);
         formData.append('upload_preset', cloudinary.uploadPreset);
 
         // Dynamically organize into Cloudinary folders mimicking the app structure
