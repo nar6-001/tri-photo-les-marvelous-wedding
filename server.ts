@@ -571,24 +571,75 @@ app.post("/api/clients", async (req, res) => {
     return res.status(400).json({ error: "Invalid client list format" });
   }
 
-  for (const client of clientsList) {
-    const { error } = await supabase.from("wedding_client_selections").upsert({
-      project_id: client.id,
-      target_count: client.targetCount,
-      target_category_quotas: client.targetCategoryQuotas || {},
-      selected_photo_ids: client.selectedPhotoIds || [],
-      disliked_photo_ids: client.dislikedPhotoIds || [],
-      photo_comments: client.photoComments || {},
-      is_locked: client.isLocked || false,
-      cover_photo_id: client.coverPhotoId || null,
-      deadline: client.deadline || null,
-      category_labels: client.categoryLabels || { Dot: "Dot", Globale: "Classique", Album: "Album" },
-      notes: client.notes || "",
-      updated_at: new Date().toISOString()
-    }, { onConflict: "project_id" });
-    if (error) console.error("Upsert client selection error:", error);
+  try {
+    // 1. Fetch current client IDs in Supabase to find deleted ones
+    const { data: dbClients, error: fetchErr } = await supabase
+      .from("wedding_projects")
+      .select("id");
+    
+    if (fetchErr) throw fetchErr;
+
+    const dbIds = (dbClients || []).map(c => c.id);
+    const incomingIds = clientsList.map(c => c.id);
+
+    // 2. Identify and delete removed clients
+    const deletedIds = dbIds.filter(id => !incomingIds.includes(id));
+    if (deletedIds.length > 0) {
+      console.log("Deleting removed clients:", deletedIds);
+      const { error: delErr } = await supabase
+        .from("wedding_projects")
+        .delete()
+        .in("id", deletedIds);
+      if (delErr) console.error("Error deleting clients from Supabase:", delErr);
+    }
+
+    // 3. Upsert incoming clients
+    for (const client of clientsList) {
+      // First upsert to wedding_projects (parent table)
+      const { error: projError } = await supabase.from("wedding_projects").upsert({
+        id: client.id,
+        couple: client.name,
+        wedding_date: client.weddingDate || null,
+        country: client.country || "France",
+        status: client.isLocked ? "Clôturé" : "En cours",
+        progress: client.targetCount ? Math.round(((client.selectedPhotoIds || []).length / client.targetCount) * 100) : 0,
+        amount: 0,
+        delay_days: 0,
+        is_legacy: false,
+        requires_sync: false
+      }, { onConflict: "id" });
+
+      if (projError) {
+        console.error(`Error upserting project ${client.id}:`, projError);
+        continue;
+      }
+
+      // Then upsert to wedding_client_selections (child table)
+      const { error: selError } = await supabase.from("wedding_client_selections").upsert({
+        project_id: client.id,
+        target_count: client.targetCount,
+        target_category_quotas: client.targetCategoryQuotas || {},
+        selected_photo_ids: client.selectedPhotoIds || [],
+        disliked_photo_ids: client.dislikedPhotoIds || [],
+        photo_comments: client.photoComments || {},
+        is_locked: client.isLocked || false,
+        cover_photo_id: client.coverPhotoId || null,
+        deadline: client.deadline || null,
+        category_labels: client.categoryLabels || { Dot: "Dot", Globale: "Classique", Album: "Album" },
+        notes: client.notes || "",
+        updated_at: new Date().toISOString()
+      }, { onConflict: "project_id" });
+
+      if (selError) {
+        console.error(`Error upserting selection ${client.id}:`, selError);
+      }
+    }
+
+    res.json({ success: true });
+  } catch (err: any) {
+    console.error("Sync clients error:", err);
+    res.status(500).json({ error: err.message });
   }
-  res.json({ success: true });
 });
 
 app.post("/api/photos", async (req, res) => {
