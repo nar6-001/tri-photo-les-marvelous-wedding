@@ -93,6 +93,70 @@ async function cloudinaryFetch(path: string, params: Record<string, string | num
   return res.json();
 }
 
+async function syncCloudinaryWithDatabase() {
+  if (!cloudinaryConfigured() || !supabase) return;
+  try {
+    console.log("🔄 Execution de la verification de synchronisation Cloudinary <-> Supabase...");
+    let allResources: any[] = [];
+    let nextCursor: string | null = null;
+    do {
+      const params: Record<string, string | number> = { type: "upload", max_results: 500 };
+      if (nextCursor) params.next_cursor = nextCursor;
+      const data = await cloudinaryFetch("/resources/image", params);
+      if (data && data.resources) {
+        allResources.push(...data.resources);
+      }
+      nextCursor = data.next_cursor || null;
+    } while (nextCursor);
+
+    if (allResources.length === 0) return;
+
+    // Fetch existing image URLs from Supabase
+    const { data: dbPhotos } = await supabase.from("wedding_photos").select("image");
+    const existingUrls = new Set((dbPhotos || []).map((p: any) => p.image));
+
+    const missingResources = allResources.filter(r => r.secure_url && !existingUrls.has(r.secure_url));
+    if (missingResources.length === 0) {
+      console.log(`✅ Synchronisation: La base de donnees contient toutes les ${allResources.length} photos Cloudinary.`);
+      return;
+    }
+
+    console.log(`📥 ${missingResources.length} photos Cloudinary manquantes en BDD detectees. Synchro automatique...`);
+    const records = missingResources.map(r => {
+      const parts = r.public_id.split('/');
+      let categoryKey = 'Globale';
+      let projectId: string | null = null;
+      if (parts.length >= 3 && parts[0] === 'Mariages') {
+        const folderSlug = parts[1].toLowerCase().replace('___', '-');
+        projectId = folderSlug;
+        if (parts.length >= 4) {
+          categoryKey = parts[2];
+        }
+      }
+      const rawFileName = parts[parts.length - 1] || 'photo';
+      const name = rawFileName.includes('.') ? rawFileName.split('.')[0] : rawFileName;
+
+      return {
+        id: crypto.randomUUID(),
+        name,
+        image: r.secure_url,
+        category: categoryKey,
+        project_id: projectId,
+        created_at: r.created_at || new Date().toISOString()
+      };
+    });
+
+    const chunkSize = 200;
+    for (let i = 0; i < records.length; i += chunkSize) {
+      const chunk = records.slice(i, i + chunkSize);
+      await supabase.from("wedding_photos").insert(chunk);
+    }
+    console.log(`🎉 Auto-restauration terminee: ${records.length} nouvelles photos ajoutees en BDD.`);
+  } catch (err: any) {
+    console.error("Erreur lors de l'auto-synchronisation Cloudinary:", err.message);
+  }
+}
+
 // Default Catalog & Clients
 export const DEFAULT_PHOTOS = [
   // ====== Dotation (préparatifs + cérémonie) ======
@@ -757,7 +821,15 @@ app.get("/api/cloudinary/folders", async (req, res) => {
   }
 });
 
-// Cloudinary: delete a photo by public_id (server-side)
+// Cloudinary: force sync all photos to Supabase database (server-side safeguard)
+app.post("/api/cloudinary/sync-database", async (req, res) => {
+  try {
+    await syncCloudinaryWithDatabase();
+    res.json({ success: true, message: "Vérification et synchronisation effectuées" });
+  } catch (e: any) {
+    res.json({ success: false, error: e.message });
+  }
+});
 app.post("/api/cloudinary/delete", async (req, res) => {
   if (!cloudinaryConfigured()) {
     return res.json({ success: false, error: "Cloudinary non configuré" });
@@ -1199,6 +1271,8 @@ async function startServer() {
     console.log(`🔗 MCP HTTP endpoint: http://localhost:${PORT}/api/mcp`);
     console.log(`📥 MCP SSE handshake: http://localhost:${PORT}/api/mcp/sse`);
     console.log(`===============================================`);
+    // Run background synchronization check automatically on server boot
+    syncCloudinaryWithDatabase().catch(err => console.error("Startup Cloudinary sync check error:", err));
   });
 }
 
