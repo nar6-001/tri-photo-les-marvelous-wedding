@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  Upload, Users, Image as ImageIcon, Settings, Plus, Trash2,
+  Upload, Users, Image as ImageIcon, Settings, Plus, Trash2, BarChart3,
   Check, AlertCircle, RefreshCw, Key, HelpCircle, ArrowLeft, Bookmark,
   MessageSquare, Lock, Unlock, Link as LinkIcon, Filter, Camera, FileImage,
   FolderOpen, Send, Copy, Search, Calendar, Globe, X, ZoomIn, Clock, ChevronLeft, ChevronRight,
@@ -328,6 +328,8 @@ export default function AdminView({
   const [batchTotal, setBatchTotal] = useState(0);
   const [batchCompleted, setBatchCompleted] = useState(0);
   const [batchTimeRemaining, setBatchTimeRemaining] = useState<number | null>(null);
+  const [isUploadPaused, setIsUploadPaused] = useState(false);
+  const uploadPausedRef = useRef(false);
 
   const formatTimeRemaining = (secs: number | null): string => {
     if (secs === null || secs <= 0) return "calcul...";
@@ -948,9 +950,19 @@ export default function AdminView({
 
     const newPhotos: WeddingPhoto[] = [];
     const batchUploadedNames = new Set<string>();
-    const startTime = Date.now();
+    const uploadStartTime = Date.now();
+    let totalPauseDuration = 0;
 
     for (let i = 0; i < count; i++) {
+      // Pause yield check loop
+      if (uploadPausedRef.current) {
+        const pauseStart = Date.now();
+        while (uploadPausedRef.current) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+        totalPauseDuration += (Date.now() - pauseStart);
+      }
+
       try {
         const photo = await processSingleUpload(files[i], targetClientId, targetCategory, batchUploadedNames, taskIds[i]);
         if (photo) {
@@ -970,7 +982,7 @@ export default function AdminView({
       setBatchCompleted(completed);
       
       if (completed < count) {
-        const elapsedMs = Date.now() - startTime;
+        const elapsedMs = (Date.now() - uploadStartTime) - totalPauseDuration;
         const msPerFile = elapsedMs / completed;
         const remainingFiles = count - completed;
         const estRemainingSec = Math.round((remainingFiles * msPerFile) / 1000);
@@ -1629,7 +1641,23 @@ export default function AdminView({
             ? Math.min(100, Math.round((targetClient.selectedPhotoIds.length / targetClient.targetCount) * 100))
             : 0;
             
-          const currentCategoryLabels = targetClient.categoryLabels || categoryLabels;
+          const currentCategoryLabels: Record<string, string> = {
+            ...categoryLabels,
+            ...(targetClient.categoryLabels || {})
+          };
+          photos.forEach(p => {
+            if ((!p.clientId || p.clientId === targetClient.id) && p.category) {
+              if (!currentCategoryLabels[p.category]) {
+                let label = p.category;
+                if (label.startsWith('custom-')) {
+                  const parts = label.split('-');
+                  label = parts.slice(1, parts.length - 1).join(' ') || p.category;
+                  label = label.charAt(0).toUpperCase() + label.slice(1);
+                }
+                currentCategoryLabels[p.category] = label;
+              }
+            }
+          });
           const clientPhotos = photos.filter(p => p.clientId === targetClient.id);
           const coverPhoto = photos.find(p => p.id === targetClient.coverPhotoId) || photos[0];
 
@@ -2109,6 +2137,145 @@ export default function AdminView({
                     </div>
 
                   </div>
+
+                  {/* DYNAMIC ACTIVITY & STATISTICS DASHBOARD */}
+                  <div className="lg:col-span-2 bg-gradient-to-br from-brand-olive/[0.03] to-white border border-brand-sand/70 rounded-2xl p-6 space-y-6 shadow-md text-left animate-fade-in-up">
+                    <div className="flex items-center justify-between pb-3 border-b border-brand-sand/40">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-brand-olive/20 to-brand-olive/5 flex items-center justify-center">
+                          <BarChart3 className="w-4 h-4 text-brand-olive" />
+                        </div>
+                        <h4 className="text-xs text-brand-olive font-extrabold uppercase tracking-widest font-serif-display">Rapport d'Activité et Statistiques</h4>
+                      </div>
+                      <span className="text-[8.5px] font-extrabold bg-brand-gold/15 text-brand-gold uppercase tracking-wider px-2 py-0.5 rounded">Temps Réel</span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      
+                      {/* STAT 1: Global swiped progress */}
+                      <div className="bg-white border border-brand-sand/60 rounded-xl p-4 flex flex-col justify-between shadow-2xs">
+                        <span className="text-[9px] font-black text-brand-sage uppercase tracking-wider">Avancement du Tri</span>
+                        <div className="my-2 flex items-baseline gap-1.5">
+                          <span className="text-2xl font-serif-display font-black text-brand-olive tabular-nums">
+                            {((targetClient.selectedPhotoIds?.length || 0) + (targetClient.dislikedPhotoIds?.length || 0))}
+                          </span>
+                          <span className="text-xs text-brand-sage">/ {clientPhotos.length} photos</span>
+                        </div>
+                        <div className="space-y-1">
+                          <div className="w-full bg-brand-sand/45 h-2 rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-brand-olive rounded-full transition-all duration-700" 
+                              style={{ width: `${clientPhotos.length > 0 ? Math.min(100, Math.round((((targetClient.selectedPhotoIds?.length || 0) + (targetClient.dislikedPhotoIds?.length || 0)) / clientPhotos.length) * 100)) : 0}%` }}
+                            />
+                          </div>
+                          <span className="text-[8.5px] font-bold text-brand-sage uppercase">
+                            {clientPhotos.length > 0 ? Math.round((((targetClient.selectedPhotoIds?.length || 0) + (targetClient.dislikedPhotoIds?.length || 0)) / clientPhotos.length) * 100) : 0}% des clichés swipés
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* STAT 2: Estimation temps restant */}
+                      <div className="bg-white border border-brand-sand/60 rounded-xl p-4 flex flex-col justify-between shadow-2xs">
+                        <span className="text-[9px] font-black text-brand-sage uppercase tracking-wider">Temps Restant Estimé</span>
+                        <div className="my-2">
+                          {(() => {
+                            const swiped = (targetClient.selectedPhotoIds?.length || 0) + (targetClient.dislikedPhotoIds?.length || 0);
+                            const remaining = Math.max(0, clientPhotos.length - swiped);
+                            const seconds = remaining * 1.5;
+                            const formatted = seconds <= 0 
+                              ? 'Tri Complété ✅' 
+                              : (seconds < 60 ? `~${Math.round(seconds)}s` : `~${Math.round(seconds / 60)} min`);
+
+                            return (
+                              <>
+                                <span className="text-xl font-serif-display font-black text-[#bc5e33] tracking-tight">{formatted}</span>
+                                <p className="text-[8.5px] text-brand-sage mt-1 font-medium leading-tight">Calculé sur une moyenne de 1.5s par action (Swipe/Vote).</p>
+                              </>
+                            );
+                          })()}
+                        </div>
+                      </div>
+
+                      {/* STAT 3: Tendance des votes */}
+                      <div className="bg-white border border-brand-sand/60 rounded-xl p-4 flex flex-col justify-between shadow-2xs">
+                        <span className="text-[9px] font-black text-brand-sage uppercase tracking-wider">Taux d'Appréciation</span>
+                        <div className="my-2">
+                          {(() => {
+                            const likes = targetClient.selectedPhotoIds?.length || 0;
+                            const dislikes = targetClient.dislikedPhotoIds?.length || 0;
+                            const totalVotes = likes + dislikes;
+                            const pctLiked = totalVotes > 0 ? Math.round((likes / totalVotes) * 100) : 0;
+
+                            return (
+                              <>
+                                <span className="text-2xl font-serif-display font-black text-emerald-700 tabular-nums">{pctLiked}%</span>
+                                <span className="text-xs text-brand-sage ml-1 font-semibold">de Oui</span>
+                                <div className="flex gap-2.5 text-[8.5px] font-bold text-brand-sage uppercase mt-2">
+                                  <span className="text-emerald-700">👍 {likes} Likes</span>
+                                  <span className="text-rose-600">👎 {dislikes} Dislikes</span>
+                                </div>
+                              </>
+                            );
+                          })()}
+                        </div>
+                      </div>
+
+                    </div>
+
+                    {/* Catégories favorites breakdown */}
+                    <div className="bg-white border border-brand-sand/60 rounded-xl p-4.5 space-y-3">
+                      <span className="text-[9.5px] font-black text-brand-olive uppercase tracking-wider block">📂 Catégories Favorites (par ordre d'appréciation) :</span>
+                      {(() => {
+                        const categoryLikes: Record<string, number> = {};
+                        targetClient.selectedPhotoIds.forEach(id => {
+                          const photo = photos.find(p => p.id === id);
+                          if (photo && photo.category) {
+                            categoryLikes[photo.category] = (categoryLikes[photo.category] || 0) + 1;
+                          }
+                        });
+                        const favoriteCategories = Object.entries(categoryLikes)
+                          .map(([catKey, count]) => ({
+                            key: catKey,
+                            label: currentCategoryLabels[catKey] || catKey,
+                            count
+                          }))
+                          .sort((a, b) => b.count - a.count);
+
+                        if (favoriteCategories.length === 0) {
+                          return (
+                            <p className="text-[10px] text-brand-sage italic">Aucune photo sélectionnée dans les favoris pour le moment.</p>
+                          );
+                        }
+
+                        return (
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            {favoriteCategories.map((item, index) => {
+                              const rankColors = [
+                                'bg-[#FAF6F0] border-brand-gold text-brand-gold',
+                                'bg-[#F5F8F6] border-emerald-300 text-emerald-800',
+                                'bg-[#EEF5F8] border-blue-200 text-blue-800',
+                                'bg-[#FAF8F5] border-brand-sand text-brand-sage'
+                              ];
+                              const colorStyle = rankColors[Math.min(index, rankColors.length - 1)];
+
+                              return (
+                                <div key={item.key} className={`border rounded-lg p-2.5 flex flex-col justify-between ${colorStyle}`}>
+                                  <div className="flex items-center justify-between gap-1 mb-1">
+                                    <span className="text-[8.5px] font-black uppercase tracking-wider font-mono">#{index + 1} Favori</span>
+                                    <span className="text-[11px] font-serif-display font-black">{item.count} ❤️</span>
+                                  </div>
+                                  <span className="text-[10px] font-extrabold truncate text-brand-olive" title={item.label}>
+                                    {item.label === 'Globale' ? 'Classique' : item.label}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  </div>
+
                 </div>
               )}
 
@@ -3345,21 +3512,51 @@ export default function AdminView({
                         </div>
 
                         {/* Progress */}
-                        <div className="space-y-2 pt-1.5 border-t border-dashed border-brand-sand">
-                          <div className="flex items-center justify-between text-[10px] font-bold">
-                            <span className="text-brand-sage">Avancement du tri favoris</span>
-                            <span className="text-brand-olive font-extrabold text-xs">
-                              {client.selectedPhotoIds.length} / {client.targetCount} clichés ({progressVal}%)
-                            </span>
-                          </div>
-                          <div className="w-full bg-brand-sand rounded-full h-2 overflow-hidden shadow-6xs">
-                            <div 
-                              className={`h-full rounded-full transition-all duration-500 ${
-                                clientStatus === 'Clôturé' ? 'bg-emerald-500' : progressVal === 100 ? 'bg-brand-gold' : 'bg-brand-olive'
-                              }`}
-                              style={{ width: `${progressVal}%` }}
-                            />
-                          </div>
+                        <div className="space-y-2.5 pt-2 border-t border-dashed border-brand-sand">
+                          {(() => {
+                            const clientPhotosCount = photos.filter(p => p.clientId === client.id).length;
+                            const swipedCount = (client.selectedPhotoIds?.length || 0) + (client.dislikedPhotoIds?.length || 0);
+                            const swipeProgress = clientPhotosCount > 0
+                              ? Math.min(100, Math.round((swipedCount / clientPhotosCount) * 100))
+                              : 0;
+                            const remainingCount = Math.max(0, clientPhotosCount - swipedCount);
+                            const estRemainingSec = remainingCount * 1.5;
+                            const estRemainingFormatted = estRemainingSec <= 0 
+                              ? 'Terminé' 
+                              : (estRemainingSec < 60 ? `~${Math.round(estRemainingSec)}s` : `~${Math.round(estRemainingSec / 60)}m`);
+
+                            return (
+                              <>
+                                <div className="flex items-center justify-between text-[10px] font-bold">
+                                  <span className="text-brand-sage">Avancement du tri global ({swipedCount} / {clientPhotosCount} photos)</span>
+                                  <span className="text-brand-olive font-extrabold text-xs">
+                                    {swipeProgress}% {remainingCount > 0 && <span className="text-[8.5px] font-normal text-brand-sage/80 ml-1">(rest. {estRemainingFormatted})</span>}
+                                  </span>
+                                </div>
+                                <div className="w-full bg-brand-sand/55 rounded-full h-1.5 overflow-hidden">
+                                  <div 
+                                    className="h-full rounded-full bg-brand-olive transition-all duration-500"
+                                    style={{ width: `${swipeProgress}%` }}
+                                  />
+                                </div>
+
+                                <div className="flex items-center justify-between text-[9.5px] font-bold pt-0.5">
+                                  <span className="text-brand-sage">Quota Favoris choisi</span>
+                                  <span className="text-brand-gold font-extrabold text-[11px]">
+                                    {client.selectedPhotoIds.length} / {client.targetCount} clichés ({progressVal}%)
+                                  </span>
+                                </div>
+                                <div className="w-full bg-brand-sand/35 rounded-full h-1.5 overflow-hidden">
+                                  <div 
+                                    className={`h-full rounded-full transition-all duration-500 ${
+                                      clientStatus === 'Clôturé' ? 'bg-emerald-500' : progressVal >= 100 ? 'bg-emerald-600' : 'bg-brand-gold'
+                                    }`}
+                                    style={{ width: `${progressVal}%` }}
+                                  />
+                                </div>
+                              </>
+                            );
+                          })()}
 
                           {/* Category breakdowns */}
                           <div className="flex flex-wrap gap-x-4 gap-y-2 bg-[#F6F3ED]/40 border border-[#E9E4DB] rounded-lg p-2.5 text-[9.5px] font-sans">
@@ -3982,9 +4179,9 @@ export default function AdminView({
                             {isUploading ? (
                               <div className="py-3 flex flex-col items-center justify-center gap-3.5 w-full px-4 text-center animate-pulse">
                                 <div className="flex items-center gap-2">
-                                  <RefreshCw className="w-5 h-5 text-brand-gold animate-spin" />
+                                  <RefreshCw className={`w-5 h-5 text-brand-gold ${isUploadPaused ? '' : 'animate-spin'}`} />
                                   <span className="text-xs font-black text-brand-olive uppercase tracking-widest font-serif-display">
-                                    Traitement et Envoi ({batchCompleted} / {batchTotal})
+                                    {isUploadPaused ? 'Importation en Pause' : `Traitement et Envoi (${batchCompleted} / ${batchTotal})`}
                                   </span>
                                 </div>
                                 
@@ -3999,8 +4196,35 @@ export default function AdminView({
                                 <div className="flex justify-between w-full text-[9.5px] font-black uppercase text-brand-sage tracking-wider">
                                   <span>{batchTotal > 0 ? Math.round((batchCompleted / batchTotal) * 100) : 0}% complété</span>
                                   <span>
-                                    {batchTimeRemaining !== null ? `Temps : ${formatTimeRemaining(batchTimeRemaining)}` : 'Calcul restant...'}
+                                    {isUploadPaused ? 'Suspendu' : (batchTimeRemaining !== null ? `Temps : ${formatTimeRemaining(batchTimeRemaining)}` : 'Calcul restant...')}
                                   </span>
+                                </div>
+
+                                {/* Pause & Cancel Controls */}
+                                <div className="flex justify-center gap-2 pt-1 z-20" onClick={e => e.stopPropagation()}>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const nextPaused = !isUploadPaused;
+                                      setIsUploadPaused(nextPaused);
+                                      uploadPausedRef.current = nextPaused;
+                                    }}
+                                    className="px-3 py-1.5 bg-brand-cream hover:bg-brand-sand border border-brand-sand rounded-full text-[9px] font-black uppercase text-brand-olive tracking-wider flex items-center gap-1 shadow-xs transition-colors cursor-pointer"
+                                  >
+                                    {isUploadPaused ? '▶️ Reprendre' : '⏸️ Suspendre'}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setIsUploading(false);
+                                      setIsUploadPaused(false);
+                                      uploadPausedRef.current = false;
+                                      toast.info("Envoi de masse interrompu.");
+                                    }}
+                                    className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-full text-[9px] font-black uppercase text-rose-700 tracking-wider flex items-center gap-1 shadow-xs transition-colors cursor-pointer"
+                                  >
+                                    ✕ Annuler
+                                  </button>
                                 </div>
                               </div>
                             ) : (
@@ -4673,9 +4897,9 @@ export default function AdminView({
                   {isUploading ? (
                     <div className="py-3 flex flex-col items-center justify-center gap-3.5 w-full px-4 text-center animate-pulse">
                       <div className="flex items-center gap-2">
-                        <RefreshCw className="w-5 h-5 text-brand-gold animate-spin" />
+                        <RefreshCw className={`w-5 h-5 text-brand-gold ${isUploadPaused ? '' : 'animate-spin'}`} />
                         <span className="text-xs font-black text-brand-olive uppercase tracking-widest font-serif-display">
-                          Importation de masse ({batchCompleted} / {batchTotal})
+                          {isUploadPaused ? 'Importation en Pause' : `Importation de masse (${batchCompleted} / ${batchTotal})`}
                         </span>
                       </div>
                       
@@ -4690,8 +4914,35 @@ export default function AdminView({
                       <div className="flex justify-between w-full text-[9.5px] font-black uppercase text-brand-sage tracking-wider">
                         <span>{batchTotal > 0 ? Math.round((batchCompleted / batchTotal) * 100) : 0}% complété</span>
                         <span>
-                          {batchTimeRemaining !== null ? `Temps : ${formatTimeRemaining(batchTimeRemaining)}` : 'Calcul restant...'}
+                          {isUploadPaused ? 'Suspendu' : (batchTimeRemaining !== null ? `Temps : ${formatTimeRemaining(batchTimeRemaining)}` : 'Calcul restant...')}
                         </span>
+                      </div>
+
+                      {/* Pause & Cancel Controls */}
+                      <div className="flex justify-center gap-2 pt-1 z-20" onClick={e => e.stopPropagation()}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const nextPaused = !isUploadPaused;
+                            setIsUploadPaused(nextPaused);
+                            uploadPausedRef.current = nextPaused;
+                          }}
+                          className="px-3 py-1.5 bg-brand-cream hover:bg-brand-sand border border-brand-sand rounded-full text-[9px] font-black uppercase text-brand-olive tracking-wider flex items-center gap-1 shadow-xs transition-colors cursor-pointer"
+                        >
+                          {isUploadPaused ? '▶️ Reprendre' : '⏸️ Suspendre'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsUploading(false);
+                            setIsUploadPaused(false);
+                            uploadPausedRef.current = false;
+                            toast.info("Envoi de masse interrompu.");
+                          }}
+                          className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-full text-[9px] font-black uppercase text-rose-700 tracking-wider flex items-center gap-1 shadow-xs transition-colors cursor-pointer"
+                        >
+                          ✕ Annuler
+                        </button>
                       </div>
                     </div>
                   ) : (

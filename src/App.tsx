@@ -174,7 +174,30 @@ export default function App() {
   const activeClient = clientsList.find(c => c.id === activeClientId) || clientsList[0];
   const selectedPhotos = activeClient ? globalPhotos.filter(photo => activeClient.selectedPhotoIds.includes(photo.id)) : [];
 
-  const currentCategoryLabels = activeClient?.categoryLabels || categoryLabels;
+  const currentCategoryLabels = useMemo(() => {
+    const merged: Record<string, string> = {
+      ...categoryLabels,
+      ...(activeClient?.categoryLabels || {})
+    };
+
+    if (activeClient) {
+      globalPhotos.forEach(p => {
+        if ((!p.clientId || p.clientId === activeClient.id) && p.category) {
+          if (!merged[p.category]) {
+            let label = p.category;
+            if (label.startsWith('custom-')) {
+              const parts = label.split('-');
+              label = parts.slice(1, parts.length - 1).join(' ') || p.category;
+              label = label.charAt(0).toUpperCase() + label.slice(1);
+            }
+            merged[p.category] = label;
+          }
+        }
+      });
+    }
+
+    return merged;
+  }, [categoryLabels, activeClient, globalPhotos]);
   const firstCat = Object.keys(currentCategoryLabels)[0] || 'Dot';
   const secondCat = Object.keys(currentCategoryLabels)[1] || 'Globale';
   const thirdCat = Object.keys(currentCategoryLabels)[2] || 'Album';
