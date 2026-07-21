@@ -46,6 +46,8 @@ import path from "path";
 import fs from "fs";
 import crypto from "crypto";
 import { createServer as createViteServer } from "vite";
+import * as supabaseJs from "@supabase/supabase-js";
+const createClient = supabaseJs.createClient || (supabaseJs as any).default?.createClient;
 import dotenv from "dotenv";
 dotenv.config();
 dotenv.config({ path: ".env.local", override: true });
