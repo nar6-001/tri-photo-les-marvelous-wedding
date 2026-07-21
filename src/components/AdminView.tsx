@@ -277,7 +277,7 @@ export default function AdminView({
 
   // Gallery: bulk select + sort + filter
   const [selectedPhotoIds, setSelectedPhotoIds] = useState<Set<string>>(new Set());
-  const [gallerySort, setGallerySort] = useState<"recent" | "oldest" | "name" | "client">("recent");
+  const [gallerySort, setGallerySort] = useState<"recent" | "oldest" | "name" | "client">("name");
   const [galleryFilterClient, setGalleryFilterClient] = useState<string>("all");
   const [galleryFilterCategory, setGalleryFilterCategory] = useState<string>("all");
   const [galleryLayout, setGalleryLayout] = useState<"2x2" | "3x3" | "4x4">("2x2");
@@ -2497,6 +2497,7 @@ export default function AdminView({
                           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                             {clientPhotos
                               .filter(p => projectGalleryFilter === 'ALL' || p.category === projectGalleryFilter)
+                              .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }))
                               .map(photo => (
                                 <div 
                                   key={photo.id}
@@ -3809,7 +3810,9 @@ export default function AdminView({
 
                     return (
                       <div className="grid grid-cols-3 gap-2 overflow-y-auto max-h-[50vh] p-1 text-left no-scrollbar">
-                        {clientPhotosForCover.map(p => (
+                        {clientPhotosForCover
+                          .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }))
+                          .map(p => (
                           <button
                             key={p.id}
                             type="button"
@@ -4316,7 +4319,9 @@ export default function AdminView({
                           </div>
                         ) : (
                           <div className="grid grid-cols-4 gap-2.5">
-                            {clientPhotos.map(photo => (
+                            {clientPhotos
+                              .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }))
+                              .map(photo => (
                               <div 
                                 key={photo.id}
                                 className="group relative aspect-[3/4] p-1 rounded-lg bg-white shadow-3xs border border-brand-sand/70 flex flex-col justify-end overflow-hidden"
@@ -5060,9 +5065,9 @@ export default function AdminView({
                     value={gallerySort}
                     onChange={setGallerySort}
                     options={[
+                      { value: "name", label: "Référence (Croissant)" },
                       { value: "recent", label: "Plus récent" },
                       { value: "oldest", label: "Plus ancien" },
-                      { value: "name", label: "Nom A-Z" },
                       { value: "client", label: "Par couple" }
                     ]}
                   />
@@ -5119,14 +5124,15 @@ export default function AdminView({
                   .filter(p => galleryFilterClient === "all" || (galleryFilterClient === "global" ? !p.clientId : p.clientId === galleryFilterClient))
                   .filter(p => galleryFilterCategory === "all" || p.category === galleryFilterCategory)
                   .sort((a, b) => {
-                    if (gallerySort === "name") return a.name.localeCompare(b.name);
+                    if (gallerySort === "recent") return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
                     if (gallerySort === "oldest") return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
                     if (gallerySort === "client") {
                       const ca = a.clientId || "";
                       const cb = b.clientId || "";
-                      return ca.localeCompare(cb);
+                      const comp = ca.localeCompare(cb);
+                      if (comp !== 0) return comp;
                     }
-                    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+                    return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
                   });
 
                 if (filteredGallery.length === 0) {

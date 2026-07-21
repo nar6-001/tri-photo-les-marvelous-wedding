@@ -172,7 +172,11 @@ export default function App() {
   };
 
   const activeClient = clientsList.find(c => c.id === activeClientId) || clientsList[0];
-  const selectedPhotos = activeClient ? globalPhotos.filter(photo => activeClient.selectedPhotoIds.includes(photo.id)) : [];
+  const selectedPhotos = activeClient
+    ? globalPhotos
+        .filter(photo => activeClient.selectedPhotoIds.includes(photo.id))
+        .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }))
+    : [];
 
   const currentCategoryLabels = useMemo(() => {
     const merged: Record<string, string> = {
@@ -240,10 +244,12 @@ export default function App() {
     if (activeCategory !== 'Tout') {
       filtered = filtered.filter(p => p.category === activeCategory);
     }
-    return filtered.filter(p =>
-      !activeClient.selectedPhotoIds.includes(p.id) &&
-      !activeClient.dislikedPhotoIds.includes(p.id)
-    );
+    return filtered
+      .filter(p =>
+        !activeClient.selectedPhotoIds.includes(p.id) &&
+        !activeClient.dislikedPhotoIds.includes(p.id)
+      )
+      .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
   };
 
   const photoQueue = getClientPhotoQueue();

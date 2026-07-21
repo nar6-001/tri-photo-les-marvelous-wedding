@@ -615,7 +615,7 @@ async function fetchFullDatabase(): Promise<DBStructure> {
       category: p.category,
       createdAt: p.created_at,
       clientId: p.project_id
-    }));
+    })).sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
 
     const chatMessages: Record<string, ChatMessage[]> = {};
     (chatsData || []).forEach(c => {
