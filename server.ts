@@ -53,7 +53,7 @@ dotenv.config({ path: ".env.local", override: true });
 // Bypass SSL certificate validation errors (common on some networks/machines)
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 
-export const app = express();
+const app = express();
 const PORT = process.env.PORT || 3001;
 
 app.use(express.json({ limit: "100mb" }));
@@ -146,10 +146,61 @@ async function deleteCloudinaryClientFolder(clientId: string) {
           method: "DELETE",
           headers: { Authorization: authHeader }
         });
-      } catch (fErr) {}
+      } catch (err) {
+        console.error(`Erreur lors de la suppression des sous-dossiers Cloudinary pour ${prefix}:`, err);
+      }
     }
   } catch (err) {
     console.error(`Erreur lors de la suppression Cloudinary pour ${clientId}:`, err);
+  }
+}
+
+async function deleteCloudinaryCategoryFolder(clientId: string | null, categoryKey: string) {
+  if (!cloudinaryConfigured()) return;
+  try {
+    const authHeader = `Basic ${Buffer.from(`${CLOUDINARY_API_KEY}:${CLOUDINARY_API_SECRET}`).toString("base64")}`;
+    
+    let prefixes: string[] = [];
+    if (clientId) {
+      const parts = clientId.split('-');
+      const capitalizedParts = parts.map(p => p.charAt(0).toUpperCase() + p.slice(1));
+      const folderSlug = capitalizedParts.join('___');
+      prefixes.push(`Mariages/${folderSlug}/${categoryKey}`);
+      prefixes.push(`Mariages/${clientId}/${categoryKey}`);
+    } else {
+      prefixes.push(`Mariages/Global/${categoryKey}`);
+    }
+
+    for (const prefix of prefixes) {
+      console.log(`🗑️ Suppression Cloudinary pour la catégorie ${categoryKey} sous : ${prefix}...`);
+      let deletedCount = 0;
+      let hasMore = true;
+      while (hasMore) {
+        const url = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/resources/image/upload?prefix=${encodeURIComponent(prefix)}`;
+        const res = await fetch(url, {
+          method: "DELETE",
+          headers: { Authorization: authHeader }
+        });
+        const data = await res.json();
+        const numDeleted = data.deleted ? Object.keys(data.deleted).length : 0;
+        deletedCount += numDeleted;
+        if (numDeleted === 0 || !data.partial) {
+          hasMore = false;
+        }
+      }
+      if (deletedCount > 0) {
+        console.log(`✅ ${deletedCount} photos supprimées dans Cloudinary sous ${prefix}`);
+      }
+
+      try {
+        await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/folders/${encodeURIComponent(prefix)}`, {
+          method: "DELETE",
+          headers: { Authorization: authHeader }
+        });
+      } catch (fErr) {}
+    }
+  } catch (err) {
+    console.error(`Erreur lors de la suppression Cloudinary pour catégorie ${categoryKey}:`, err);
   }
 }
 
@@ -232,7 +283,7 @@ async function syncCloudinaryWithDatabase() {
 }
 
 // Default Catalog & Clients
-export const DEFAULT_PHOTOS = [
+const DEFAULT_PHOTOS = [
   // ====== Dotation (préparatifs + cérémonie) ======
   {
     id: 'photo-1',
@@ -594,8 +645,6 @@ export const DEFAULT_PHOTOS = [
   }
 ];
 
-import { createClient } from "@supabase/supabase-js";
-
 // Initialize Supabase Client
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL || "https://itpweepyypseuwemxzfd.supabase.co";
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || "";
@@ -885,6 +934,32 @@ app.delete("/api/clients/:id", async (req, res) => {
     res.json({ success: true, ...fullDb });
   } catch (err: any) {
     console.error(`Erreur suppression couple ${id}:`, err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/api/photos/delete-category", async (req, res) => {
+  const { clientId, categoryKey } = req.body;
+  if (!categoryKey) return res.status(400).json({ error: "Category key required" });
+
+  try {
+    console.log(`🗑️ Suppression de la catégorie ${categoryKey} (Client: ${clientId || "Global"})...`);
+
+    if (supabase) {
+      let query = supabase.from("wedding_photos").delete().eq("category", categoryKey);
+      if (clientId) {
+        query = query.eq("project_id", clientId);
+      }
+      const { error: delErr } = await query;
+      if (delErr) console.error("Error deleting category photos from Supabase:", delErr);
+    }
+
+    await deleteCloudinaryCategoryFolder(clientId || null, categoryKey);
+
+    const fullDb = await fetchFullDatabase();
+    res.json({ success: true, ...fullDb });
+  } catch (err: any) {
+    console.error(`Erreur suppression catégorie ${categoryKey}:`, err);
     res.status(500).json({ error: err.message });
   }
 });

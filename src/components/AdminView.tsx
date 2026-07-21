@@ -6166,25 +6166,37 @@ export default function AdminView({
                   setPhotos(updatedPhotos);
                   onRefreshPhotos?.();
 
-                  fetch("/api/photos", {
+                  toast.info(`Suppression du dossier "${label}" et purge de ses ${photosToDelete.length} photo(s) dans Cloudinary...`);
+
+                  fetch("/api/photos/delete-category", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ globalPhotos: updatedPhotos })
-                  }).then(() => loadDatabaseState()).catch(() => {});
+                    body: JSON.stringify({ clientId, categoryKey: key })
+                  })
+                  .then(res => res.json())
+                  .then(data => {
+                    if (data && data.globalPhotos) {
+                      setPhotos(data.globalPhotos);
+                      saveGlobalPhotos(data.globalPhotos);
+                    }
+                    toast.success(`Dossier "${label}" et ses ${photosToDelete.length} photo(s) purgés de Cloudinary !`);
+                  })
+                  .catch(() => {
+                    toast.error("Erreur lors de la suppression Cloudinary");
+                  });
 
                   setFolderDeleteModal(null);
-                  toast.error(`Dossier "${label}" et ses ${photosToDelete.length} photo(s) ont été définitivement supprimés.`);
                 }}
                 className="w-full text-left bg-red-50 hover:bg-red-100/90 text-red-950 p-4 rounded-2xl border-2 border-red-300 transition-all group cursor-pointer shadow-xs active:scale-[0.99]"
               >
                 <div className="flex items-center justify-between font-extrabold text-xs tracking-wide uppercase text-red-900">
                   <span className="flex items-center gap-2">
-                    💣 2. Supprimer le dossier ET tout son contenu
+                    💣 2. Supprimer le dossier ET tout son contenu (Cloudinary + BDD)
                   </span>
                   <span className="text-[9.5px] bg-red-200/80 text-red-950 px-2 py-0.5 rounded-full font-mono font-bold">{folderDeleteModal.count} photo(s)</span>
                 </div>
                 <p className="text-[11px] text-red-800 font-semibold mt-1.5 leading-snug">
-                  Le dossier est supprimé et <strong>les {folderDeleteModal.count} photo(s) sont définitivement détruites</strong> (retirées de la base et nettoyées).
+                  Le dossier est supprimé et <strong>les {folderDeleteModal.count} photo(s) sont définitivement détruites dans Cloudinary et Supabase</strong>.
                 </p>
               </button>
             </div>
