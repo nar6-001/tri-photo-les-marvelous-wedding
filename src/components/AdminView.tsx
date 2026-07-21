@@ -24,7 +24,7 @@ import {
 import { 
   getCloudinarySettings, saveCloudinarySettings, 
   getGlobalPhotos, saveGlobalPhotos, 
-  getClients, saveClients, 
+  getClients, saveClients, saveCategoryLabels,
   ClientAccount, WeddingPhoto, CloudinarySettings,
   setActiveClientId, CategoryLabels
 } from '../utils/weddingData';
@@ -1904,9 +1904,7 @@ export default function AdminView({
               }
             }
           });
-          const clientPhotos = useMemo(() => {
-            return photos.filter(p => p.clientId === targetClient.id);
-          }, [photos, targetClient.id]);
+          const clientPhotos = photos.filter(p => !p.clientId || p.clientId === targetClient.id);
           const coverPhoto = photos.find(p => p.id === targetClient.coverPhotoId) || photos[0];
 
           return (
@@ -2702,18 +2700,28 @@ export default function AdminView({
                                     {label} ({tabPhotosCount})
                                   </button>
                                   {tab !== 'A_TOUS' && (
-                                    <button
-                                      type="button"
-                                      onClick={openCategoryEditor}
-                                      title="Modifier / Renommer / Supprimer ce dossier"
-                                      className={`px-1.5 py-1 rounded-r text-[9.5px] uppercase text-nowrap select-none cursor-pointer border border-l transition-all duration-200 flex items-center justify-center ${
-                                        isSelected
-                                          ? 'bg-brand-moss text-brand-cream border-brand-olive hover:bg-amber-600 hover:text-white'
-                                          : 'bg-brand-cream/60 text-brand-sand border-brand-sand hover:bg-brand-gold hover:text-white hover:border-brand-gold'
-                                      }`}
-                                    >
-                                      <Edit2 className="w-3 h-3" />
-                                    </button>
+                                    <div className="flex items-center">
+                                      <button
+                                        type="button"
+                                        onClick={openCategoryEditor}
+                                        title="Modifier / Renommer ce dossier"
+                                        className={`px-1.5 py-1 text-[9.5px] uppercase select-none cursor-pointer border border-l transition-all duration-200 flex items-center justify-center ${
+                                          isSelected
+                                            ? 'bg-brand-moss text-brand-cream border-brand-olive hover:bg-amber-600 hover:text-white'
+                                            : 'bg-brand-cream/60 text-brand-sand border-brand-sand hover:bg-brand-gold hover:text-white hover:border-brand-gold'
+                                        }`}
+                                      >
+                                        <Edit2 className="w-3 h-3" />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => setConfirmDeleteCategoryKey(tab)}
+                                        title={`Supprimer le dossier "${label}"`}
+                                        className="px-1.5 py-1 rounded-r text-[9.5px] uppercase select-none cursor-pointer border border-l-0 bg-red-50 text-red-600 border-brand-sand hover:bg-red-600 hover:text-white hover:border-red-600 transition-all flex items-center justify-center"
+                                      >
+                                        <Trash2 className="w-3 h-3" />
+                                      </button>
+                                    </div>
                                   )}
                                 </div>
                               );
