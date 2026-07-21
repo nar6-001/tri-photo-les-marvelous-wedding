@@ -93,6 +93,66 @@ async function cloudinaryFetch(path: string, params: Record<string, string | num
   return res.json();
 }
 
+async function deleteCloudinaryClientFolder(clientId: string) {
+  if (!cloudinaryConfigured()) return;
+  try {
+    const parts = clientId.split('-');
+    const capitalizedParts = parts.map(p => p.charAt(0).toUpperCase() + p.slice(1));
+    const folderSlug = capitalizedParts.join('___');
+
+    const prefixes = [
+      `Mariages/${folderSlug}`,
+      `Mariages/${clientId}`
+    ];
+
+    const authHeader = `Basic ${Buffer.from(`${CLOUDINARY_API_KEY}:${CLOUDINARY_API_SECRET}`).toString("base64")}`;
+
+    for (const prefix of prefixes) {
+      console.log(`🗑️ Suppression Cloudinary pour le dossier: ${prefix}...`);
+      let deletedCount = 0;
+      let hasMore = true;
+      while (hasMore) {
+        const url = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/resources/image/upload?prefix=${encodeURIComponent(prefix)}`;
+        const res = await fetch(url, {
+          method: "DELETE",
+          headers: { Authorization: authHeader }
+        });
+        const data = await res.json();
+        const numDeleted = data.deleted ? Object.keys(data.deleted).length : 0;
+        deletedCount += numDeleted;
+        if (numDeleted === 0 || !data.partial) {
+          hasMore = false;
+        }
+      }
+      if (deletedCount > 0) {
+        console.log(`✅ ${deletedCount} photos supprimées dans Cloudinary sous ${prefix}`);
+      }
+
+      // Delete subfolders and root folder in Cloudinary
+      try {
+        const subfoldersRes = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/folders/${prefix}`, {
+          headers: { Authorization: authHeader }
+        });
+        const subData = await subfoldersRes.json();
+        if (subData && subData.folders && Array.isArray(subData.folders)) {
+          for (const sub of subData.folders) {
+            await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/folders/${encodeURIComponent(sub.path)}`, {
+              method: "DELETE",
+              headers: { Authorization: authHeader }
+            });
+          }
+        }
+        await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/folders/${encodeURIComponent(prefix)}`, {
+          method: "DELETE",
+          headers: { Authorization: authHeader }
+        });
+      } catch (fErr) {}
+    }
+  } catch (err) {
+    console.error(`Erreur lors de la suppression Cloudinary pour ${clientId}:`, err);
+  }
+}
+
 async function syncCloudinaryWithDatabase() {
   if (!cloudinaryConfigured() || !supabase) return;
   try {
@@ -727,11 +787,27 @@ app.post("/api/clients", async (req, res) => {
     const deletedIds = dbIds.filter(id => !incomingIds.includes(id));
     if (deletedIds.length > 0) {
       console.log("Deleting removed clients:", deletedIds);
+      const { error: delPhotosErr } = await supabase
+        .from("wedding_photos")
+        .delete()
+        .in("project_id", deletedIds);
+      if (delPhotosErr) console.error("Error deleting client photos from Supabase:", delPhotosErr);
+
+      const { error: delSelErr } = await supabase
+        .from("wedding_client_selections")
+        .delete()
+        .in("project_id", deletedIds);
+      if (delSelErr) console.error("Error deleting client selections from Supabase:", delSelErr);
+
       const { error: delErr } = await supabase
         .from("wedding_projects")
         .delete()
         .in("id", deletedIds);
       if (delErr) console.error("Error deleting clients from Supabase:", delErr);
+
+      for (const deletedId of deletedIds) {
+        await deleteCloudinaryClientFolder(deletedId);
+      }
     }
 
     // 3. Upsert incoming clients
@@ -786,6 +862,29 @@ app.post("/api/clients", async (req, res) => {
     res.json({ success: true, clientsList });
   } catch (err: any) {
     console.error("Sync clients error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete("/api/clients/:id", async (req, res) => {
+  const { id } = req.params;
+  if (!id) return res.status(400).json({ error: "Client ID required" });
+
+  try {
+    console.log(`🗑️ Suppression complète du couple ${id}...`);
+
+    if (supabase) {
+      await supabase.from("wedding_photos").delete().eq("project_id", id);
+      await supabase.from("wedding_client_selections").delete().eq("project_id", id);
+      await supabase.from("wedding_projects").delete().eq("id", id);
+    }
+
+    await deleteCloudinaryClientFolder(id);
+
+    const fullDb = await fetchFullDatabase();
+    res.json({ success: true, ...fullDb });
+  } catch (err: any) {
+    console.error(`Erreur suppression couple ${id}:`, err);
     res.status(500).json({ error: err.message });
   }
 });

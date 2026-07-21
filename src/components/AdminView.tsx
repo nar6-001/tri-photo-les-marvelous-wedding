@@ -687,16 +687,33 @@ export default function AdminView({
 
   const handleDeleteClient = (id: string, name: string) => {
     const updated = clients.filter(c => c.id !== id);
+    const updatedPhotos = photos.filter(p => p.clientId !== id);
     saveClients(updated);
     setClients(updated);
-    
-    fetch("/api/clients", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ clientsList: updated })
+    saveGlobalPhotos(updatedPhotos);
+    setPhotos(updatedPhotos);
+
+    toast.info(`Suppression de "${name}" et nettoyage Cloudinary en cours...`);
+
+    fetch(`/api/clients/${encodeURIComponent(id)}`, {
+      method: "DELETE"
     })
-    .then(() => loadDatabaseState())
-    .catch(err => {});
+    .then(res => res.json())
+    .then(data => {
+      if (data && data.globalPhotos) {
+        setPhotos(data.globalPhotos);
+        saveGlobalPhotos(data.globalPhotos);
+      }
+      if (data && data.clientsList) {
+        setClients(data.clientsList);
+        saveClients(data.clientsList);
+      }
+      toast.success(`Couple "${name}" et son dossier Cloudinary supprimés !`);
+      onRefreshPhotos?.();
+    })
+    .catch(err => {
+      toast.error("Erreur lors de la suppression du couple");
+    });
   };
 
   const handleToggleLockClient = (clientId: string) => {
