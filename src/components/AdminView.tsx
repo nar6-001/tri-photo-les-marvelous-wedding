@@ -893,6 +893,8 @@ export default function AdminView({
         const formData = new FormData();
         formData.append('file', fileToUpload);
         formData.append('upload_preset', finalCloudinary.uploadPreset);
+        formData.append('use_filename', 'true');
+        formData.append('unique_filename', 'false');
 
         // Dynamically organize into Cloudinary folders mimicking the app structure
         let folderPath = "Mariages/Global";

@@ -207,7 +207,7 @@ async function syncCloudinaryWithDatabase() {
           categoryKey = parts[2];
         }
       }
-      const rawFileName = parts[parts.length - 1] || 'photo';
+      const rawFileName = r.display_name || parts[parts.length - 1] || 'photo';
       const name = rawFileName.includes('.') ? rawFileName.split('.')[0] : rawFileName;
 
       return {
