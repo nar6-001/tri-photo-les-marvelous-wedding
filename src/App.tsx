@@ -80,7 +80,7 @@ export default function App() {
     }
   };
 
-  // Load real-time database from full-stack server
+  // Load real-time database with fail-safe selection merging
   useEffect(() => {
     fetch("/api/database")
       .then(res => {
@@ -90,9 +90,49 @@ export default function App() {
       .then(db => {
         if (db && db.globalPhotos && db.clientsList) {
           setGlobalPhotos(db.globalPhotos);
-          setClientsList(db.clientsList);
+          
+          // Fail-safe merge: combine local & server selections so no selection is lost on refresh
+          const localClients = getClients();
+          const localMap = new Map(localClients.map(c => [c.id, c]));
+          let needsPush = false;
+
+          const mergedClients = db.clientsList.map((serverC: any) => {
+            const localC = localMap.get(serverC.id);
+            if (!localC) return serverC;
+
+            const mergedSelected = Array.from(new Set([...(serverC.selectedPhotoIds || []), ...(localC.selectedPhotoIds || [])]));
+            if (mergedSelected.length > (serverC.selectedPhotoIds || []).length) {
+              needsPush = true;
+            }
+
+            const mergedDisliked = Array.from(new Set([...(serverC.dislikedPhotoIds || []), ...(localC.dislikedPhotoIds || [])]))
+              .filter(id => !mergedSelected.includes(id));
+
+            const mergedComments = {
+              ...(localC.photoComments || {}),
+              ...(serverC.photoComments || {})
+            };
+
+            return {
+              ...serverC,
+              selectedPhotoIds: mergedSelected,
+              dislikedPhotoIds: mergedDisliked,
+              photoComments: mergedComments
+            };
+          });
+
+          setClientsList(mergedClients);
+          saveClients(mergedClients);
           localStorage.setItem('wedding_global_photos', JSON.stringify(db.globalPhotos));
-          localStorage.setItem('wedding_clients', JSON.stringify(db.clientsList));
+
+          if (needsPush) {
+            fetch("/api/clients", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ clientsList: mergedClients })
+            }).catch(() => {});
+          }
+
           if (db.categoryLabels) {
             setCategoryLabels(db.categoryLabels);
             saveCategoryLabels(db.categoryLabels);
@@ -139,7 +179,28 @@ export default function App() {
       .then(db => {
         if (db && db.globalPhotos && db.clientsList) {
           setGlobalPhotos(db.globalPhotos);
-          setClientsList(db.clientsList);
+          
+          const localClients = getClients();
+          const localMap = new Map(localClients.map(c => [c.id, c]));
+
+          const mergedClients = db.clientsList.map((serverC: any) => {
+            const localC = localMap.get(serverC.id);
+            if (!localC) return serverC;
+
+            const mergedSelected = Array.from(new Set([...(serverC.selectedPhotoIds || []), ...(localC.selectedPhotoIds || [])]));
+            const mergedDisliked = Array.from(new Set([...(serverC.dislikedPhotoIds || []), ...(localC.dislikedPhotoIds || [])]))
+              .filter(id => !mergedSelected.includes(id));
+
+            return {
+              ...serverC,
+              selectedPhotoIds: mergedSelected,
+              dislikedPhotoIds: mergedDisliked,
+              photoComments: { ...(localC.photoComments || {}), ...(serverC.photoComments || {}) }
+            };
+          });
+
+          setClientsList(mergedClients);
+          saveClients(mergedClients);
           if (db.categoryLabels) {
             setCategoryLabels(db.categoryLabels);
             saveCategoryLabels(db.categoryLabels);
@@ -307,6 +368,20 @@ export default function App() {
     saveClients(updatedClients);
     setClientsList(updatedClients);
 
+    const updatedActive = updatedClients.find(c => c.id === activeClient.id);
+    if (updatedActive) {
+      fetch("/api/clients/selection", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          clientId: activeClient.id,
+          selectedPhotoIds: updatedActive.selectedPhotoIds || [],
+          dislikedPhotoIds: updatedActive.dislikedPhotoIds || [],
+          photoComments: updatedActive.photoComments || {}
+        })
+      }).catch(() => {});
+    }
+
     // Check if we just hit the target count
     const newCount = updatedClients.find(c => c.id === activeClient.id)?.selectedPhotoIds.length || 0;
     if ((dir === 'right' || dir === 'up' || dir === 'down') && newCount === activeClient.targetCount) {
@@ -338,6 +413,21 @@ export default function App() {
     });
     saveClients(updatedClients);
     setClientsList(updatedClients);
+
+    const updatedActive = updatedClients.find(c => c.id === activeClient.id);
+    if (updatedActive) {
+      fetch("/api/clients/selection", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          clientId: activeClient.id,
+          selectedPhotoIds: updatedActive.selectedPhotoIds || [],
+          dislikedPhotoIds: updatedActive.dislikedPhotoIds || [],
+          photoComments: updatedActive.photoComments || {}
+        })
+      }).catch(() => {});
+    }
+
     fetch("/api/clients", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -356,6 +446,21 @@ export default function App() {
     });
     saveClients(updatedClients);
     setClientsList(updatedClients);
+
+    const updatedActive = updatedClients.find(c => c.id === activeClient.id);
+    if (updatedActive) {
+      fetch("/api/clients/selection", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          clientId: activeClient.id,
+          selectedPhotoIds: updatedActive.selectedPhotoIds || [],
+          dislikedPhotoIds: updatedActive.dislikedPhotoIds || [],
+          photoComments: updatedActive.photoComments || {}
+        })
+      }).catch(() => {});
+    }
+
     fetch("/api/clients", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -374,6 +479,18 @@ export default function App() {
     });
     setClientsList(updatedClients);
     saveClients(updatedClients);
+
+    fetch("/api/clients/selection", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        clientId: activeClient.id,
+        selectedPhotoIds: [],
+        dislikedPhotoIds: [],
+        photoComments: activeClient.photoComments || {}
+      })
+    }).catch(() => {});
+
     fetch("/api/clients", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -397,6 +514,21 @@ export default function App() {
     }
     saveClients(updatedClients);
     setClientsList(updatedClients);
+
+    const updatedActive = updatedClients.find(c => c.id === activeClient.id);
+    if (updatedActive) {
+      fetch("/api/clients/selection", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          clientId: activeClient.id,
+          selectedPhotoIds: updatedActive.selectedPhotoIds || [],
+          dislikedPhotoIds: updatedActive.dislikedPhotoIds || [],
+          photoComments: updatedActive.photoComments || {}
+        })
+      }).catch(() => {});
+    }
+
     fetch("/api/clients", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -413,6 +545,18 @@ export default function App() {
     );
     saveClients(updatedClients);
     setClientsList(updatedClients);
+
+    fetch("/api/clients/selection", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        clientId: activeClient.id,
+        selectedPhotoIds: activeClient.selectedPhotoIds || [],
+        dislikedPhotoIds: activeClient.dislikedPhotoIds || [],
+        photoComments: activeClient.photoComments || {}
+      })
+    }).catch(() => {});
+
     fetch("/api/clients", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -432,6 +576,21 @@ export default function App() {
       : client);
     saveClients(updatedClients);
     setClientsList(updatedClients);
+
+    const updatedActive = updatedClients.find(c => c.id === activeClient.id);
+    if (updatedActive) {
+      fetch("/api/clients/selection", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          clientId: activeClient.id,
+          selectedPhotoIds: updatedActive.selectedPhotoIds || [],
+          dislikedPhotoIds: updatedActive.dislikedPhotoIds || [],
+          photoComments: updatedActive.photoComments || {}
+        })
+      }).catch(() => {});
+    }
+
     fetch("/api/clients", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

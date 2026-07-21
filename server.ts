@@ -55,7 +55,7 @@ dotenv.config({ path: ".env.local", override: true });
 // Bypass SSL certificate validation errors (common on some networks/machines)
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 
-const app = express();
+export const app = express();
 const PORT = process.env.PORT || 3001;
 
 app.use(express.json({ limit: "100mb" }));
@@ -285,7 +285,7 @@ async function syncCloudinaryWithDatabase() {
 }
 
 // Default Catalog & Clients
-const DEFAULT_PHOTOS = [
+export const DEFAULT_PHOTOS = [
   // ====== Dotation (préparatifs + cérémonie) ======
   {
     id: 'photo-1',
@@ -948,12 +948,38 @@ app.post("/api/photos/delete-category", async (req, res) => {
     console.log(`🗑️ Suppression de la catégorie ${categoryKey} (Client: ${clientId || "Global"})...`);
 
     if (supabase) {
-      let query = supabase.from("wedding_photos").delete().eq("category", categoryKey);
+      // 1. Delete photos matching categoryKey (exact or ilike)
+      let query = supabase.from("wedding_photos").delete().ilike("category", categoryKey);
       if (clientId) {
         query = query.eq("project_id", clientId);
       }
       const { error: delErr } = await query;
       if (delErr) console.error("Error deleting category photos from Supabase:", delErr);
+
+      // 2. Remove categoryKey from wedding_client_selections
+      if (clientId) {
+        const { data: sel } = await supabase
+          .from("wedding_client_selections")
+          .select("target_category_quotas")
+          .eq("project_id", clientId)
+          .single();
+
+        if (sel && sel.target_category_quotas) {
+          const quotasObj = { ...sel.target_category_quotas };
+          delete quotasObj[categoryKey];
+          delete quotasObj[categoryKey.toLowerCase()];
+          delete quotasObj[categoryKey.charAt(0).toUpperCase() + categoryKey.slice(1)];
+          if (quotasObj.__categoryLabels) {
+            delete quotasObj.__categoryLabels[categoryKey];
+            delete quotasObj.__categoryLabels[categoryKey.toLowerCase()];
+            delete quotasObj.__categoryLabels[categoryKey.charAt(0).toUpperCase() + categoryKey.slice(1)];
+          }
+          await supabase
+            .from("wedding_client_selections")
+            .update({ target_category_quotas: quotasObj })
+            .eq("project_id", clientId);
+        }
+      }
     }
 
     await deleteCloudinaryCategoryFolder(clientId || null, categoryKey);
@@ -962,6 +988,55 @@ app.post("/api/photos/delete-category", async (req, res) => {
     res.json({ success: true, ...fullDb });
   } catch (err: any) {
     console.error(`Erreur suppression catégorie ${categoryKey}:`, err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/api/clients/selection", async (req, res) => {
+  const { clientId, selectedPhotoIds, dislikedPhotoIds, photoComments } = req.body;
+  if (!clientId) return res.status(400).json({ error: "Client ID required" });
+
+  try {
+    if (supabase) {
+      const { data: existing } = await supabase
+        .from("wedding_client_selections")
+        .select("*")
+        .eq("project_id", clientId)
+        .single();
+
+      const existingQuotas = existing?.target_category_quotas || {};
+      const updatedQuotas = {
+        ...existingQuotas,
+        __photoComments: photoComments ?? existingQuotas.__photoComments ?? {}
+      };
+
+      const { error: upsertErr } = await supabase
+        .from("wedding_client_selections")
+        .upsert({
+          project_id: clientId,
+          target_count: existing?.target_count ?? 5,
+          target_category_quotas: updatedQuotas,
+          selected_photo_ids: selectedPhotoIds ?? existing?.selected_photo_ids ?? [],
+          disliked_photo_ids: dislikedPhotoIds ?? existing?.disliked_photo_ids ?? [],
+          notes: existing?.notes ?? "",
+          updated_at: new Date().toISOString()
+        }, { onConflict: "project_id" });
+
+      if (upsertErr) console.error(`Error saving selection for ${clientId}:`, upsertErr);
+
+      const targetCount = existing?.target_count || 5;
+      const selCount = (selectedPhotoIds || []).length;
+      const progress = Math.min(100, Math.round((selCount / targetCount) * 100));
+
+      await supabase
+        .from("wedding_projects")
+        .update({ progress })
+        .eq("id", clientId);
+    }
+
+    res.json({ success: true });
+  } catch (err: any) {
+    console.error(`Selection save error for ${clientId}:`, err);
     res.status(500).json({ error: err.message });
   }
 });

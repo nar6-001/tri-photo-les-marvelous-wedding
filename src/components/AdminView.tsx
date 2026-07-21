@@ -6086,26 +6086,36 @@ export default function AdminView({
                   // 1. Update category labels
                   const updatedLabels = { ...editableCategoryLabels };
                   delete updatedLabels[key];
+                  delete updatedLabels[key.toLowerCase()];
                   setEditableCategoryLabels(updatedLabels);
+                  saveCategoryLabels(updatedLabels);
+                  onUpdateCategoryLabels?.(updatedLabels);
 
-                  // 2. Update client quotas if specific client
-                  if (clientId) {
-                    const updatedClients = clients.map(c => {
-                      if (c.id === clientId && c.targetCategoryQuotas) {
-                        const q = { ...c.targetCategoryQuotas };
-                        delete q[key];
-                        return { ...c, targetCategoryQuotas: q };
-                      }
-                      return c;
-                    });
-                    saveClients(updatedClients);
-                    setClients(updatedClients);
-                  }
+                  // 2. Update client quotas and client categoryLabels if specific client
+                  const updatedClients = clients.map(c => {
+                    if (!clientId || c.id === clientId) {
+                      const q = { ...(c.targetCategoryQuotas || {}) };
+                      delete q[key];
+                      delete q[key.toLowerCase()];
+                      const catLabels = { ...(c.categoryLabels || {}) };
+                      delete catLabels[key];
+                      delete catLabels[key.toLowerCase()];
+                      return { ...c, targetCategoryQuotas: q, categoryLabels: catLabels };
+                    }
+                    return c;
+                  });
+                  saveClients(updatedClients);
+                  setClients(updatedClients);
+                  fetch("/api/clients", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ clientsList: updatedClients })
+                  }).catch(() => {});
 
-                  // 3. Keep photos, remove category assignment
+                  // 3. Keep photos, reassign category to 'Globale'
                   const updatedPhotos = photos.map(p => {
-                    if ((!clientId || p.clientId === clientId) && p.category === key) {
-                      return { ...p, category: '' as any };
+                    if ((!clientId || p.clientId === clientId) && (p.category === key || p.category?.toLowerCase() === key.toLowerCase())) {
+                      return { ...p, category: 'Globale' as any };
                     }
                     return p;
                   });
@@ -6143,24 +6153,34 @@ export default function AdminView({
                   // 1. Update category labels
                   const updatedLabels = { ...editableCategoryLabels };
                   delete updatedLabels[key];
+                  delete updatedLabels[key.toLowerCase()];
                   setEditableCategoryLabels(updatedLabels);
+                  saveCategoryLabels(updatedLabels);
+                  onUpdateCategoryLabels?.(updatedLabels);
 
-                  if (clientId) {
-                    const updatedClients = clients.map(c => {
-                      if (c.id === clientId && c.targetCategoryQuotas) {
-                        const q = { ...c.targetCategoryQuotas };
-                        delete q[key];
-                        return { ...c, targetCategoryQuotas: q };
-                      }
-                      return c;
-                    });
-                    saveClients(updatedClients);
-                    setClients(updatedClients);
-                  }
+                  const updatedClients = clients.map(c => {
+                    if (!clientId || c.id === clientId) {
+                      const q = { ...(c.targetCategoryQuotas || {}) };
+                      delete q[key];
+                      delete q[key.toLowerCase()];
+                      const catLabels = { ...(c.categoryLabels || {}) };
+                      delete catLabels[key];
+                      delete catLabels[key.toLowerCase()];
+                      return { ...c, targetCategoryQuotas: q, categoryLabels: catLabels };
+                    }
+                    return c;
+                  });
+                  saveClients(updatedClients);
+                  setClients(updatedClients);
+                  fetch("/api/clients", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ clientsList: updatedClients })
+                  }).catch(() => {});
 
                   // 2. Filter out photos belonging to this folder
-                  const photosToDelete = photos.filter(p => (!clientId || p.clientId === clientId) && p.category === key);
-                  const updatedPhotos = photos.filter(p => !((!clientId || p.clientId === clientId) && p.category === key));
+                  const photosToDelete = photos.filter(p => (!clientId || p.clientId === clientId) && (p.category === key || p.category?.toLowerCase() === key.toLowerCase()));
+                  const updatedPhotos = photos.filter(p => !((!clientId || p.clientId === clientId) && (p.category === key || p.category?.toLowerCase() === key.toLowerCase())));
 
                   saveGlobalPhotos(updatedPhotos);
                   setPhotos(updatedPhotos);
