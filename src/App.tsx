@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
-  Sliders, User, RefreshCw, X, Layers, CircleDot, Globe, Images, Bookmark, Heart, MessageSquare, Check, Mail, Key, Lock, Unlock, Clock, PanelLeftClose, PanelLeftOpen, ChevronLeft, ChevronRight
+  Sliders, User, RefreshCw, X, Layers, CircleDot, Globe, Images, Bookmark, Heart, MessageSquare, Check, Mail, Key, Lock, Unlock, Clock, PanelLeftClose, PanelLeftOpen, ChevronLeft, ChevronRight, FolderOpen, Folder
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -658,41 +658,115 @@ export default function App() {
                       { tab: 'Explore' as BottomNavTab, label: 'Ma Sélection', Icon: Heart, badge: activeClient?.selectedPhotoIds.length || 0 },
                       { tab: 'Chat' as BottomNavTab, label: 'Messagerie', Icon: Mail },
                       { tab: 'Profil' as BottomNavTab, label: 'Mon Profil', Icon: User }
-                    ].map((item) => (
-                      <motion.button
-                        key={item.tab}
-                        type="button"
-                        whileTap={{ scale: 0.96 }}
-                        onClick={() => goToTab(item.tab)}
-                        title={isClientSidebarCollapsed ? item.label : undefined}
-                        className={`flex items-center justify-between rounded-xl text-left text-[11px] font-extrabold uppercase tracking-wide transition-all cursor-pointer outline-none border-none relative ${
-                          isClientSidebarCollapsed ? 'p-2.5 justify-center' : 'px-3 py-2'
-                        } ${
-                          activeTab === item.tab
-                            ? 'bg-brand-olive text-brand-cream shadow-xs'
-                            : 'text-brand-sage hover:text-brand-olive hover:bg-brand-cream'
-                        }`}
-                      >
-                        {activeTab === item.tab && (
-                          <motion.span
-                            layoutId="sidebar-pill"
-                            className="absolute inset-0 bg-brand-olive rounded-xl"
-                            transition={{ type: "spring", damping: 22, stiffness: 240 }}
-                          />
-                        )}
-                        <span className={`relative z-10 flex items-center ${isClientSidebarCollapsed ? 'justify-center' : 'gap-2.5'}`}>
-                          <item.Icon className="w-3.5 h-3.5 shrink-0" />
-                          {!isClientSidebarCollapsed && <span className="truncate max-w-[120px]">{item.label}</span>}
-                        </span>
-                        {item.badge !== undefined && item.badge > 0 && (
-                          <span className={`relative z-10 bg-brand-rose text-white font-bold text-[8.5px] flex items-center justify-center rounded-full leading-none shadow-xs font-sans tabular-nums ${
-                            isClientSidebarCollapsed ? 'absolute -top-1 -right-1 w-4 h-4 border border-white' : 'min-w-[16px] h-3.5 px-1'
-                          }`}>
-                            {item.badge}
-                          </span>
-                        )}
-                      </motion.button>
-                    ))}
+                    ].map((item) => {
+                      const getFolderPhotoCount = (catKey: string): number => {
+                        if (!activeClient) return 0;
+                        if (catKey === 'Tout') {
+                          return globalPhotos.filter(p => !p.clientId || p.clientId === activeClient.id).length;
+                        }
+                        return globalPhotos.filter(p => (!p.clientId || p.clientId === activeClient.id) && p.category === catKey).length;
+                      };
+
+                      return (
+                        <React.Fragment key={item.tab}>
+                          <motion.button
+                            type="button"
+                            whileTap={{ scale: 0.96 }}
+                            onClick={() => {
+                              goToTab(item.tab);
+                              if (item.tab === 'Swipe') {
+                                setActiveCategory('Tout');
+                              }
+                            }}
+                            title={isClientSidebarCollapsed ? item.label : undefined}
+                            className={`flex items-center justify-between rounded-xl text-left text-[11px] font-extrabold uppercase tracking-wide transition-all cursor-pointer outline-none border-none relative ${
+                              isClientSidebarCollapsed ? 'p-2.5 justify-center' : 'px-3 py-2'
+                            } ${
+                              activeTab === item.tab
+                                ? 'bg-brand-olive text-brand-cream shadow-xs'
+                                : 'text-brand-sage hover:text-brand-olive hover:bg-brand-cream'
+                            }`}
+                          >
+                            {activeTab === item.tab && (
+                              <motion.span
+                                layoutId="sidebar-pill"
+                                className="absolute inset-0 bg-brand-olive rounded-xl"
+                                transition={{ type: "spring", damping: 22, stiffness: 240 }}
+                              />
+                            )}
+                            <span className={`relative z-10 flex items-center ${isClientSidebarCollapsed ? 'justify-center' : 'gap-2.5'}`}>
+                              <item.Icon className="w-3.5 h-3.5 shrink-0" />
+                              {!isClientSidebarCollapsed && <span className="truncate max-w-[120px]">{item.label}</span>}
+                            </span>
+                            {item.badge !== undefined && item.badge > 0 && (
+                              <span className={`relative z-10 bg-brand-rose text-white font-bold text-[8.5px] flex items-center justify-center rounded-full leading-none shadow-xs font-sans tabular-nums ${
+                                isClientSidebarCollapsed ? 'absolute -top-1 -right-1 w-4 h-4 border border-white' : 'min-w-[16px] h-3.5 px-1'
+                              }`}>
+                                {item.badge}
+                              </span>
+                            )}
+                          </motion.button>
+
+                          {/* Sub-menu containing photo folders with (count) */}
+                          {item.tab === 'Swipe' && !isClientSidebarCollapsed && (
+                            <div className="ml-3 pl-2 border-l-2 border-brand-sand/70 my-1 space-y-1">
+                              {/* Option Tous les dossiers */}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  goToTab('Swipe');
+                                  setActiveCategory('Tout');
+                                }}
+                                className={`w-full flex items-center justify-between px-2 py-1 rounded-md text-[10px] font-bold text-left transition-all cursor-pointer ${
+                                  activeTab === 'Swipe' && activeCategory === 'Tout'
+                                    ? 'bg-brand-gold/20 text-brand-olive font-black'
+                                    : 'text-brand-sage hover:text-brand-olive hover:bg-brand-cream/80'
+                                }`}
+                              >
+                                <span className="flex items-center gap-1.5 truncate">
+                                  <FolderOpen className="w-3 h-3 text-brand-gold shrink-0" />
+                                  <span className="truncate">Tous les dossiers</span>
+                                </span>
+                                <span className="text-[9px] font-mono font-bold text-brand-olive/80 shrink-0">
+                                  ({getFolderPhotoCount('Tout')})
+                                </span>
+                              </button>
+
+                              {/* List of custom photo folders containing photos */}
+                              {Object.entries(currentCategoryLabels).map(([catKey, label]) => {
+                                const count = getFolderPhotoCount(catKey);
+                                if (count === 0) return null;
+                                const isSelected = activeTab === 'Swipe' && activeCategory === catKey;
+
+                                return (
+                                  <button
+                                    key={catKey}
+                                    type="button"
+                                    onClick={() => {
+                                      goToTab('Swipe');
+                                      setActiveCategory(catKey);
+                                    }}
+                                    className={`w-full flex items-center justify-between px-2 py-1 rounded-md text-[10px] font-bold text-left transition-all cursor-pointer ${
+                                      isSelected
+                                        ? 'bg-brand-gold/20 text-brand-olive font-black'
+                                        : 'text-brand-sage hover:text-brand-olive hover:bg-brand-cream/80'
+                                    }`}
+                                  >
+                                    <span className="flex items-center gap-1.5 truncate">
+                                      <Folder className="w-3 h-3 text-brand-gold/80 shrink-0" />
+                                      <span className="truncate">{label}</span>
+                                    </span>
+                                    <span className="text-[9px] font-mono font-bold text-brand-olive/80 shrink-0">
+                                      ({count})
+                                    </span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </React.Fragment>
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -775,10 +849,7 @@ export default function App() {
                   </span>
                   <div className="flex items-center gap-1.5 flex-1 min-w-0 overflow-x-auto no-scrollbar scroll-smooth py-0.5 px-0.5 justify-start sm:justify-center">
                   {['Tout', ...Object.keys(currentCategoryLabels).filter(cat => {
-                    const rawQ = activeClient.targetCategoryQuotas?.[cat] !== undefined
-                      ? activeClient.targetCategoryQuotas[cat]
-                      : (cat === 'Dot' ? activeClient.targetCountDot : (cat === 'Globale' ? activeClient.targetCountGlobale : (cat === 'Album' ? activeClient.targetCountAlbum : 0))) || 0;
-                    return rawQ !== -1;
+                    return globalPhotos.some(p => (!p.clientId || p.clientId === activeClient.id) && p.category === cat);
                   })].map((cat) => {
                     const isActive = activeCategory === cat;
                     const displayName = cat === 'Tout' ? 'Tout' : (currentCategoryLabels[cat] || cat);

@@ -2421,13 +2421,8 @@ export default function AdminView({
                           {/* Inner tab filter to filter the grid in space */}
                           <div className="flex gap-1 overflow-x-auto pb-1 border-b border-brand-sand/35 scrollbar-none">
                             {(['A_TOUS', ...Object.keys(currentCategoryLabels).filter(catKey => {
-                              // Montrer uniquement les dossiers qui contiennent au moins 1 photo (ou la catégorie désactivée)
-                              if (clientPhotos.some(p => p.category === catKey)) return true;
-                              const rawQ = targetClient.targetCategoryQuotas?.[catKey] !== undefined
-                                ? targetClient.targetCategoryQuotas[catKey]
-                                : (catKey === 'Dot' ? targetClient.targetCountDot : (catKey === 'Globale' ? targetClient.targetCountGlobale : (catKey === 'Album' ? targetClient.targetCountAlbum : 0))) || 0;
-                              // Désactivée → cacher
-                              return rawQ !== -1;
+                              // Montrer uniquement les dossiers qui contiennent au moins 1 photo
+                              return clientPhotos.some(p => p.category === catKey);
                             })] as const).map(tab => {
                               const tabPhotosCount = tab === 'A_TOUS' 
                                 ? clientPhotos.length 
