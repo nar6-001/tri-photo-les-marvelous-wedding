@@ -111,8 +111,22 @@ async function syncCloudinaryWithDatabase() {
 
     if (allResources.length === 0) return;
 
-    // Fetch existing image URLs from Supabase
-    const { data: dbPhotos } = await supabase.from("wedding_photos").select("image");
+    // Fetch all existing image URLs from Supabase (paginated)
+    let dbPhotos: any[] = [];
+    let dbPage = 0;
+    const dbPageSize = 1000;
+    while (true) {
+      const from = dbPage * dbPageSize;
+      const to = from + dbPageSize - 1;
+      const { data: chunk } = await supabase
+        .from("wedding_photos")
+        .select("image")
+        .range(from, to);
+      if (!chunk || chunk.length === 0) break;
+      dbPhotos = dbPhotos.concat(chunk);
+      if (chunk.length < dbPageSize) break;
+      dbPage++;
+    }
     const existingUrls = new Set((dbPhotos || []).map((p: any) => p.image));
 
     const missingResources = allResources.filter(r => r.secure_url && !existingUrls.has(r.secure_url));
@@ -571,12 +585,25 @@ async function fetchFullDatabase(): Promise<DBStructure> {
       .select("*");
     if (selErr) throw selErr;
 
-    // 3. Fetch wedding photos
-    const { data: photosData, error: photoErr } = await supabase
-      .from("wedding_photos")
-      .select("*")
-      .order("created_at", { ascending: false });
-    if (photoErr) throw photoErr;
+    // 3. Fetch all wedding photos (paginated to bypass Supabase 1000 row limit)
+    let photosData: any[] = [];
+    let photoPage = 0;
+    const photoPageSize = 1000;
+    while (true) {
+      const from = photoPage * photoPageSize;
+      const to = from + photoPageSize - 1;
+      const { data: chunk, error: photoErr } = await supabase
+        .from("wedding_photos")
+        .select("*")
+        .range(from, to)
+        .order("created_at", { ascending: false });
+
+      if (photoErr) throw photoErr;
+      if (!chunk || chunk.length === 0) break;
+      photosData = photosData.concat(chunk);
+      if (chunk.length < photoPageSize) break;
+      photoPage++;
+    }
 
     // 4. Fetch internal wedding chats
     const { data: chatsData, error: chatErr } = await supabase

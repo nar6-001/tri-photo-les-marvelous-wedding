@@ -665,6 +665,10 @@ export default function AdminView({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ clientsList: updated })
     })
+    .then(() => {
+      loadDatabaseState();
+      onRefreshPhotos?.();
+    })
     .catch(err => {});
   };
 
