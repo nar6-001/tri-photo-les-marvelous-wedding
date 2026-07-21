@@ -1556,12 +1556,12 @@ export default function AdminView({
                       </motion.div>
                     )}
 
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
                       {[
-                        { label: "Couples", value: animatedCouples, Icon: Users, color: "#525E43", spark: historySnapshot.map(h => h.couples), sub: <><span className="text-emerald-700">{animatedClosed} validés</span><span className="text-blue-600">{animatedActive} en cours</span></> },
-                        { label: "Galerie", value: animatedPhotos, Icon: ImageIcon, color: "#C2A679", spark: historySnapshot.map(h => h.photos), sub: <><span className="text-brand-gold">{animatedCloud} cloud</span><span className={localBase64Warning ? 'text-amber-600' : 'text-brand-sage'}>{localBase64PhotosCount} base64</span></> },
-                        { label: "Messages", value: animatedConvos, Icon: MessageSquare, color: "#964724", spark: historySnapshot.map(h => h.messages), sub: <span>📨 {animatedMsgs} avis</span> },
-                        { label: "Cloud", value: cloudinary.cloudName ? "✓" : "—", Icon: Globe, color: "#502E42", spark: [], sub: <span>{cloudinary.cloudName ? "Connecté" : "Offline"}</span> }
+                        { label: "Couples", value: animatedCouples, Icon: Users, color: "#525E43", spark: historySnapshot.map(h => h.couples), sub: <><span className="text-emerald-700 truncate">{animatedClosed} validés</span><span className="text-blue-600 truncate">{animatedActive} en cours</span></> },
+                        { label: "Galerie", value: animatedPhotos, Icon: ImageIcon, color: "#C2A679", spark: historySnapshot.map(h => h.photos), sub: <><span className="text-brand-gold truncate">{animatedCloud} cloud</span><span className={localBase64Warning ? 'text-amber-600 truncate' : 'text-brand-sage truncate'}>{localBase64PhotosCount} base64</span></> },
+                        { label: "Messages", value: animatedConvos, Icon: MessageSquare, color: "#964724", spark: historySnapshot.map(h => h.messages), sub: <span className="truncate">📨 {animatedMsgs} avis</span> },
+                        { label: "Cloud", value: cloudinary.cloudName ? "✓" : "—", Icon: Globe, color: "#502E42", spark: [], sub: <span className="truncate">{cloudinary.cloudName ? "Connecté" : "Offline"}</span> }
                       ].map((k, i) => (
                         <motion.button
                           key={k.label}
@@ -1570,19 +1570,19 @@ export default function AdminView({
                           transition={{ delay: i * 0.05 }}
                           whileHover={{ y: -2 }}
                           onClick={() => goToSection(k.label === "Couples" ? 'clients' : k.label === "Galerie" ? 'gallery' : k.label === "Messages" ? 'messages' : 'settings')}
-                          className="bg-[var(--bg-panel)] border border-brand-sand/70 rounded-2xl p-3.5 shadow-sm flex flex-col gap-2 text-left cursor-pointer transition-all hover:shadow-md"
+                          className="bg-[var(--bg-panel)] border border-brand-sand/70 rounded-2xl p-2.5 sm:p-3.5 shadow-sm flex flex-col gap-1.5 sm:gap-2 text-left cursor-pointer transition-all hover:shadow-md min-w-0 overflow-hidden"
                         >
-                          <div className="flex items-start justify-between">
-                            <div>
-                              <span className="text-[9px] font-extrabold uppercase text-brand-sage tracking-wider block">{k.label}</span>
-                              <span className="text-xl font-serif-display font-black text-brand-olive leading-tight tabular-nums block">{k.value}</span>
+                          <div className="flex items-start justify-between gap-1">
+                            <div className="min-w-0 flex-1">
+                              <span className="text-[9px] font-extrabold uppercase text-brand-sage tracking-wider block truncate">{k.label}</span>
+                              <span className="text-lg md:text-xl font-serif-display font-black text-brand-olive leading-tight tabular-nums block truncate">{k.value}</span>
                             </div>
-                            <div className="w-7 h-7 rounded-lg bg-brand-cream flex items-center justify-center" style={{ color: k.color }}>
-                              <k.Icon className="w-3.5 h-3.5" />
+                            <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-brand-cream flex items-center justify-center shrink-0" style={{ color: k.color }}>
+                              <k.Icon className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                             </div>
                           </div>
                           {k.spark.length > 0 && <div className="h-5 -mx-1"><Sparkline data={k.spark} color={k.color} height={20} /></div>}
-                          <div className="text-[9px] uppercase font-bold tracking-wider text-brand-sage flex items-center justify-between tabular-nums">{k.sub}</div>
+                          <div className="text-[8.5px] sm:text-[9px] uppercase font-bold tracking-wider text-brand-sage flex items-center justify-between tabular-nums gap-1 min-w-0 overflow-hidden">{k.sub}</div>
                         </motion.button>
                       ))}
                     </div>
@@ -1599,9 +1599,9 @@ export default function AdminView({
                           return (
                             <button key={i} onClick={() => openCouple(a.clientId)} className="w-full flex items-center gap-2 text-[10px] text-brand-olive hover:bg-brand-cream rounded-lg px-1 py-0.5 cursor-pointer">
                               <span className="w-1 h-1 rounded-full bg-brand-gold shrink-0" />
-                              <span className="font-extrabold">{c.name}</span>
-                              <span className="text-brand-sage">— {a.action}</span>
-                              <span className="ml-auto text-[8.5px] text-brand-sage/70">{new Date(a.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                              <span className="font-extrabold truncate">{c.name}</span>
+                              <span className="text-brand-sage truncate">— {a.action}</span>
+                              <span className="ml-auto text-[8.5px] text-brand-sage/70 shrink-0">{new Date(a.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                             </button>
                           );
                         })}
@@ -1619,9 +1619,9 @@ export default function AdminView({
                   { label: "Voir messages", Icon: MessageSquare, onClick: () => goToSection('messages') },
                   { label: "Réglages", Icon: Settings, onClick: () => goToSection('settings') }
                 ].map(a => (
-                  <button key={a.label} type="button" onClick={a.onClick} className="bg-[var(--bg-panel)] hover:bg-brand-cream border border-brand-sand rounded-xl p-3 flex flex-col items-center gap-1.5 text-center cursor-pointer transition-all hover:shadow-sm">
-                    <a.Icon className="w-4 h-4 text-brand-gold" />
-                    <span className="text-[9.5px] font-extrabold uppercase tracking-wider text-brand-olive">{a.label}</span>
+                  <button key={a.label} type="button" onClick={a.onClick} className="bg-[var(--bg-panel)] hover:bg-brand-cream border border-brand-sand rounded-xl p-2.5 sm:p-3 flex flex-col items-center gap-1.5 text-center cursor-pointer transition-all hover:shadow-sm min-w-0 overflow-hidden">
+                    <a.Icon className="w-4 h-4 text-brand-gold shrink-0" />
+                    <span className="text-[9px] sm:text-[9.5px] font-extrabold uppercase tracking-wider text-brand-olive truncate w-full">{a.label}</span>
                   </button>
                 ))}
               </div>

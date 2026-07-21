@@ -706,11 +706,11 @@ export default function App() {
               )}
 
               {activeTab === 'Swipe' && activeClient && (
-                <div className="bg-[var(--bg-panel)]/80 backdrop-blur border-b border-brand-sand py-2 px-3 flex items-center gap-2 justify-between z-40 relative shrink-0 overflow-x-auto no-scrollbar">
-                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-brand-sage whitespace-nowrap tabular-nums hidden sm:inline">
+                <div className="bg-[var(--bg-panel)]/80 backdrop-blur border-b border-brand-sand py-1.5 px-2 flex items-center gap-2 justify-between z-40 relative shrink-0 max-w-full overflow-hidden">
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-brand-sage whitespace-nowrap tabular-nums hidden sm:inline shrink-0">
                     Photo {currentPhoto ? photoQueue.findIndex(p => p.id === currentPhoto.id) + 1 : 0} / {photoQueue.length}
                   </span>
-                  <div className="flex items-center gap-1.5 flex-1 justify-center min-w-0">
+                  <div className="flex items-center gap-1.5 flex-1 min-w-0 overflow-x-auto no-scrollbar scroll-smooth py-0.5 px-0.5 justify-start sm:justify-center">
                   {['Tout', ...Object.keys(currentCategoryLabels).filter(cat => {
                     const rawQ = activeClient.targetCategoryQuotas?.[cat] !== undefined
                       ? activeClient.targetCategoryQuotas[cat]
@@ -740,7 +740,7 @@ export default function App() {
                         type="button"
                         whileTap={{ scale: 0.95 }}
                         onClick={() => setActiveCategory(cat)}
-                        className={`relative text-[9px] uppercase tracking-wider font-extrabold px-2.5 py-1 rounded-full transition-colors cursor-pointer flex items-center gap-1 ${
+                        className={`relative shrink-0 whitespace-nowrap text-[9px] uppercase tracking-wider font-extrabold px-2.5 py-1 rounded-full transition-colors cursor-pointer flex items-center gap-1 ${
                           isDisabledCat
                             ? 'bg-brand-sand/55 text-brand-sand border border-brand-sand/70 cursor-not-allowed line-through opacity-65'
                             : isActive

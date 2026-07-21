@@ -195,7 +195,7 @@ export default function SwipeCard({ profile, onSwipe, active, isTop = true, stac
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
-              className="font-script-accent text-3xl text-white drop-shadow-md tracking-wide"
+              className="font-serif-display font-bold text-2xl text-white drop-shadow-md tracking-tight"
             >
               {profile.name}
             </motion.span>

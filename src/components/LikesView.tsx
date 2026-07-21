@@ -453,7 +453,7 @@ function PolaroidCard({
         <div className="flex-1 flex flex-col justify-between py-1">
           <div>
             <div className="flex flex-wrap items-start justify-between gap-1.5">
-              <h3 className="font-script-accent text-xl text-brand-olive leading-tight">{photo.name}</h3>
+              <h3 className="font-serif-display font-bold text-lg text-brand-olive leading-tight tracking-tight">{photo.name}</h3>
               <CategoryChip category={photo.category} theme={theme} />
             </div>
           </div>
@@ -539,7 +539,7 @@ function PolaroidCard({
         </div>
 
         <div className="pt-1.5 flex items-center justify-between min-w-0 gap-1.5">
-          <p className="font-script-accent text-[13px] text-brand-olive truncate leading-none flex-1" title={photo.name}>{photo.name}</p>
+          <p className="font-serif-display font-bold text-xs text-brand-olive truncate leading-none flex-1 tracking-tight" title={photo.name}>{photo.name}</p>
           <div className="flex items-center gap-0.5 shrink-0">
             {photoComment && (
               <MessageSquare className="w-3.5 h-3.5 text-brand-gold fill-brand-gold/10" title={`Consigne : ${photoComment}`} />
@@ -595,7 +595,7 @@ function PolaroidCard({
       </div>
 
       <div className="pt-2 text-center shrink-0">
-        <p className="font-script-accent text-lg text-brand-olive truncate leading-none">{photo.name}</p>
+        <p className="font-serif-display font-bold text-base text-brand-olive truncate leading-none tracking-tight">{photo.name}</p>
         <CategoryChip
           category={photo.category}
           theme={theme}
