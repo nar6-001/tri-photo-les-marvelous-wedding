@@ -1,17 +1,28 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { ZoomIn, ZoomOut, RotateCcw, X, HelpCircle, Move } from "lucide-react";
+import { ZoomIn, ZoomOut, RotateCcw, X, HelpCircle, Move, ChevronLeft, ChevronRight } from "lucide-react";
 import { WeddingPhoto } from "../utils/weddingData";
 import { SmartImage, ConfirmModal } from "./Shared";
 
 interface ZoomLightboxProps {
   photo: WeddingPhoto;
+  photos?: WeddingPhoto[];
+  currentIndex?: number;
+  onNavigate?: (newIndex: number) => void;
   onClose: () => void;
   isLocked?: boolean;
   onRemove?: () => void;
 }
 
-export default function ZoomLightbox({ photo, onClose, isLocked = false, onRemove }: ZoomLightboxProps) {
+export default function ZoomLightbox({
+  photo,
+  photos,
+  currentIndex,
+  onNavigate,
+  onClose,
+  isLocked = false,
+  onRemove
+}: ZoomLightboxProps) {
   const [scale, setScale] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
@@ -19,27 +30,36 @@ export default function ZoomLightbox({ photo, onClose, isLocked = false, onRemov
   const [showHelp, setShowHelp] = useState(true);
 
   const containerRef = useRef<HTMLDivElement>(null);
-  const imageRef = useRef<HTMLImageElement>(null);
   const dragStartRef = useRef({ x: 0, y: 0 });
   const lastTouchDistanceRef = useRef<number | null>(null);
   const lastTouchRef = useRef({ x: 0, y: 0 });
+  const touchStartPosRef = useRef({ x: 0, y: 0 });
   const lastTapRef = useRef<number>(0);
+
+  const hasPhotos = Boolean(photos && photos.length > 1 && currentIndex !== undefined && onNavigate);
+  const canGoPrev = Boolean(hasPhotos && currentIndex! > 0);
+  const canGoNext = Boolean(hasPhotos && currentIndex! < (photos?.length || 0) - 1);
+
+  const handlePrev = useCallback(() => {
+    if (canGoPrev && onNavigate && currentIndex !== undefined) {
+      setScale(1);
+      setPosition({ x: 0, y: 0 });
+      onNavigate(currentIndex - 1);
+    }
+  }, [canGoPrev, currentIndex, onNavigate]);
+
+  const handleNext = useCallback(() => {
+    if (canGoNext && onNavigate && currentIndex !== undefined) {
+      setScale(1);
+      setPosition({ x: 0, y: 0 });
+      onNavigate(currentIndex + 1);
+    }
+  }, [canGoNext, currentIndex, onNavigate]);
 
   useEffect(() => {
     setScale(1);
     setPosition({ x: 0, y: 0 });
   }, [photo]);
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-      if (e.key === "+" || e.key === "=") handleZoomIn();
-      if (e.key === "-") handleZoomOut();
-      if (e.key === "0") handleReset();
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
 
   const clamp = (v: number, min: number, max: number) => Math.min(Math.max(v, min), max);
 
@@ -52,6 +72,19 @@ export default function ZoomLightbox({ photo, onClose, isLocked = false, onRemov
     });
   }, []);
   const handleReset = useCallback(() => { setScale(1); setPosition({ x: 0, y: 0 }); }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+      if (e.key === "+" || e.key === "=") handleZoomIn();
+      if (e.key === "-") handleZoomOut();
+      if (e.key === "0") handleReset();
+      if (e.key === "ArrowLeft") handlePrev();
+      if (e.key === "ArrowRight") handleNext();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [handleZoomIn, handleZoomOut, handleReset, handlePrev, handleNext, onClose]);
 
   const handleDoubleClick = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -84,6 +117,7 @@ export default function ZoomLightbox({ photo, onClose, isLocked = false, onRemov
     if (e.touches.length === 1) {
       const touch = e.touches[0];
       lastTouchRef.current = { x: touch.clientX, y: touch.clientY };
+      touchStartPosRef.current = { x: touch.clientX, y: touch.clientY };
       if (scale <= 1) {
         const now = Date.now();
         if (now - lastTapRef.current < 280) {
@@ -124,16 +158,36 @@ export default function ZoomLightbox({ photo, onClose, isLocked = false, onRemov
     }
   };
 
-  const handleTouchEnd = () => { setIsDragging(false); lastTouchDistanceRef.current = null; };
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (scale <= 1 && e.changedTouches.length === 1) {
+      const touch = e.changedTouches[0];
+      const dx = touch.clientX - touchStartPosRef.current.x;
+      const dy = Math.abs(touch.clientY - touchStartPosRef.current.y);
+      if (Math.abs(dx) > 45 && dy < 80) {
+        if (dx < 0 && canGoNext) handleNext();
+        else if (dx > 0 && canGoPrev) handlePrev();
+      }
+    }
+    setIsDragging(false);
+    lastTouchDistanceRef.current = null;
+  };
 
   return (
-    <div className="absolute inset-0 bg-[#0C0F0A]/98 z-[55] flex flex-col justify-between p-4 backdrop-blur-md select-none animate-fade-in text-left font-sans" ref={containerRef}>
-      <div className="flex items-center justify-between w-full shrink-0 z-10 pb-2">
+    <div className="fixed inset-0 bg-[#0C0F0A]/98 z-[999] flex flex-col justify-between p-3 sm:p-4 backdrop-blur-md select-none animate-fade-in text-left font-sans" ref={containerRef}>
+      {/* Header */}
+      <div className="flex items-center justify-between w-full shrink-0 z-20 pb-2 border-b border-white/10">
         <div className="text-brand-cream/90 flex flex-col">
-          <span className="bg-brand-gold/90 text-brand-cream text-[8.5px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full inline-block w-fit mb-0.5 shadow-sm">
-            {photo.category}
-          </span>
-          <h3 className="text-sm font-serif-display font-bold tracking-tight text-white">{photo.name}</h3>
+          <div className="flex items-center gap-2">
+            <span className="bg-brand-gold/90 text-brand-cream text-[8.5px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full inline-block shadow-sm">
+              {photo.category}
+            </span>
+            {hasPhotos && (
+              <span className="text-[10px] text-brand-cream/80 font-mono font-semibold bg-white/10 px-2.5 py-0.5 rounded-full">
+                {currentIndex! + 1} sur {photos!.length}
+              </span>
+            )}
+          </div>
+          <h3 className="text-sm font-serif-display font-bold tracking-tight text-white mt-0.5">{photo.name}</h3>
         </div>
         <div className="flex items-center gap-2">
           {onRemove && !isLocked && (
@@ -153,6 +207,7 @@ export default function ZoomLightbox({ photo, onClose, isLocked = false, onRemov
         </div>
       </div>
 
+      {/* Main Image Area */}
       <div
         className="flex-1 w-full relative flex items-center justify-center overflow-hidden cursor-crosshair"
         onMouseDown={(e) => {
@@ -172,7 +227,31 @@ export default function ZoomLightbox({ photo, onClose, isLocked = false, onRemov
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
+        {/* Navigation Arrows */}
+        {canGoPrev && (
+          <button
+            onClick={(e) => { e.stopPropagation(); handlePrev(); }}
+            aria-label="Photo précédente"
+            className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 z-30 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-black/60 hover:bg-black/85 text-white flex items-center justify-center border border-white/20 shadow-xl cursor-pointer active:scale-90 transition-all backdrop-blur-sm"
+          >
+            <ChevronLeft className="w-6 h-6 sm:w-7 sm:h-7" />
+          </button>
+        )}
+        {canGoNext && (
+          <button
+            onClick={(e) => { e.stopPropagation(); handleNext(); }}
+            aria-label="Photo suivante"
+            className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 z-30 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-black/60 hover:bg-black/85 text-white flex items-center justify-center border border-white/20 shadow-xl cursor-pointer active:scale-90 transition-all backdrop-blur-sm"
+          >
+            <ChevronRight className="w-6 h-6 sm:w-7 sm:h-7" />
+          </button>
+        )}
+
         <motion.div
+          key={photo.id}
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale }}
+          exit={{ opacity: 0 }}
           className="w-full h-full flex items-center justify-center"
           style={{
             transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
@@ -226,14 +305,15 @@ export default function ZoomLightbox({ photo, onClose, isLocked = false, onRemov
               className="absolute top-4 right-4 pointer-events-auto opacity-90 flex items-center gap-1 text-[9px] text-zinc-300 font-medium bg-black/60 hover:bg-black/80 px-2.5 py-1.5 rounded-md cursor-pointer"
             >
               <HelpCircle className="w-3 h-3 text-brand-gold" />
-              <span>Double-clic pour zoomer · Molette · Esc pour fermer</span>
+              <span>Glisser pour changer de photo · 2x clic pour zoomer</span>
             </motion.button>
           )}
         </AnimatePresence>
       </div>
 
-      <div className="flex flex-col items-center gap-2.5 mt-2.5 shrink-0 z-10 w-full bg-gradient-to-t from-black/80 to-transparent p-3 rounded-2xl border border-white/5">
-        <div className="flex items-center gap-1.5 justify-center">
+      {/* Controls Bar */}
+      <div className="flex flex-col items-center gap-2 mt-2 shrink-0 z-20 w-full bg-gradient-to-t from-black/90 via-black/75 to-transparent p-3 rounded-2xl border border-white/5">
+        <div className="flex items-center gap-2 justify-center">
           <motion.button whileTap={{ scale: 0.9 }} type="button" onClick={handleZoomOut} disabled={scale <= 1} aria-label="Zoomer arrière"
             className={`w-9.5 h-9.5 rounded-full flex items-center justify-center transition-all ${scale <= 1 ? 'bg-[#1e221a]/50 text-brand-sage/30 cursor-not-allowed border border-white/5' : 'bg-[#2a3024]/85 hover:bg-[#3d4635] text-brand-cream border border-brand-gold/30 cursor-pointer'}`}>
             <ZoomOut className="w-4 h-4" />
@@ -250,7 +330,7 @@ export default function ZoomLightbox({ photo, onClose, isLocked = false, onRemov
           </motion.button>
         </div>
         <p className="text-[9px] text-[#A0AA9C] font-semibold uppercase tracking-widest text-center">
-          Pinch sur mobile · Glisser pour explorer · Toucher 2x pour zoomer
+          Pinch ou swipe latéral sur mobile · Toucher 2x pour zoomer
         </p>
       </div>
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
-  Sliders, User, RefreshCw, X, Layers, CircleDot, Globe, Images, Bookmark, Heart, MessageSquare, Check, Mail, Key, Lock, Unlock, Clock
+  Sliders, User, RefreshCw, X, Layers, CircleDot, Globe, Images, Bookmark, Heart, MessageSquare, Check, Mail, Key, Lock, Unlock, Clock, PanelLeftClose, PanelLeftOpen, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -49,6 +49,9 @@ export default function App() {
   const [isCommentModalOpen, setIsCommentModalOpen] = useState(false);
   const [commentText, setCommentText] = useState('');
   const [commentSuccess, setCommentSuccess] = useState(false);
+
+  // Client Sidebar collapse state
+  const [isClientSidebarCollapsed, setIsClientSidebarCollapsed] = useState(false);
 
   // Admin passcode states
   const [isAdminAuthorized, setIsAdminAuthorized] = useState<boolean>(true);
@@ -555,67 +558,116 @@ export default function App() {
         {/* CLIENT MODE */}
         <div className="flex-1 flex flex-col xl:flex-row min-h-0 relative divide-y xl:divide-y-0 xl:divide-x divide-brand-sand select-none">
 
-            {/* DESKTOP LEFT SIDEBAR */}
+            {/* DESKTOP LEFT SIDEBAR (RETRACTABLE) */}
             {activeClient && (
               <motion.div
+                layout
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.4 }}
-                className="w-64 xl:w-72 bg-[var(--bg-subtle)] hidden xl:flex flex-col p-5 xl:p-6 shrink-0 border-r border-brand-sand justify-between overflow-y-auto no-scrollbar"
+                transition={{ duration: 0.3 }}
+                className={`bg-[var(--bg-subtle)] hidden xl:flex flex-col shrink-0 border-r border-brand-sand justify-between overflow-y-auto no-scrollbar transition-all duration-300 relative select-none ${
+                  isClientSidebarCollapsed ? 'w-16 p-3 items-center' : 'w-64 xl:w-72 p-5 xl:p-6'
+                }`}
               >
-                <div className="space-y-4">
-                  <div className="pb-4 border-b border-brand-sand">
-                    <span className="text-[10px] font-extrabold uppercase text-brand-gold tracking-widest font-serif-display block leading-normal mb-1">
-                      Maison Marvel
-                    </span>
-                    <h1 className="text-base font-serif-display font-black text-brand-olive uppercase leading-tight tracking-tight">
-                      L'ALBUM DE NOCES
-                    </h1>
-                    <p className="text-[10px] font-serif-display text-brand-sage italic mt-0.5 leading-normal">
-                      Votre livre d'or interactif
-                    </p>
+                <div className="space-y-4 w-full">
+                  {/* Top Header & Retract Toggle */}
+                  <div className="pb-3 border-b border-brand-sand flex items-center justify-between gap-1 w-full">
+                    {!isClientSidebarCollapsed ? (
+                      <>
+                        <div className="flex flex-col text-left min-w-0 flex-1">
+                          <span className="text-[9.5px] font-extrabold uppercase text-brand-gold tracking-widest font-serif-display block leading-normal mb-0.5">
+                            Maison Marvel
+                          </span>
+                          <h1 className="text-sm font-serif-display font-black text-brand-olive uppercase leading-tight tracking-tight truncate">
+                            L'ALBUM DE NOCES
+                          </h1>
+                          <p className="text-[9.5px] font-serif-display text-brand-sage italic mt-0.5 leading-tight">
+                            Votre livre d'or interactif
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setIsClientSidebarCollapsed(true)}
+                          className="p-1.5 rounded-lg bg-brand-cream hover:bg-brand-sand text-brand-sage hover:text-brand-olive transition-colors cursor-pointer shrink-0 ml-1"
+                          title="Replier le volet"
+                          aria-label="Replier le volet"
+                        >
+                          <PanelLeftClose className="w-4 h-4" />
+                        </button>
+                      </>
+                    ) : (
+                      <div className="w-full flex flex-col items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setIsClientSidebarCollapsed(false)}
+                          className="p-2 rounded-xl bg-brand-cream hover:bg-brand-olive hover:text-brand-cream text-brand-olive transition-all cursor-pointer shadow-2xs"
+                          title="Déplier le volet"
+                          aria-label="Déplier le volet"
+                        >
+                          <PanelLeftOpen className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
                   </div>
 
-                  <div className="py-2 flex flex-col text-left space-y-1.5">
-                    <span className="text-[8.5px] font-extrabold uppercase text-brand-sage tracking-wider">Espace Couple</span>
-                    <p className="text-xs font-serif-display font-black text-brand-olive uppercase tracking-tight">{activeClient.name}</p>
+                  {/* Couple Info & Progress */}
+                  {!isClientSidebarCollapsed ? (
+                    <div className="py-1 flex flex-col text-left space-y-1.5 w-full">
+                      <span className="text-[8.5px] font-extrabold uppercase text-brand-sage tracking-wider">Espace Couple</span>
+                      <p className="text-xs font-serif-display font-black text-brand-olive uppercase tracking-tight">{activeClient.name}</p>
 
-                    <div className="bg-[var(--bg-subtle)] border border-brand-sand/60 rounded-xl p-3 flex flex-col space-y-1.5 shadow-5xs">
-                      <div className="flex justify-between items-center text-[10px] text-brand-olive font-extrabold">
-                        <span>Sélection Album</span>
-                        <span className="text-brand-gold font-black tabular-nums">{activeClient.selectedPhotoIds.length} / {activeClient.targetCount}</span>
+                      <div className="bg-[var(--bg-subtle)] border border-brand-sand/60 rounded-xl p-3 flex flex-col space-y-1.5 shadow-5xs">
+                        <div className="flex justify-between items-center text-[10px] text-brand-olive font-extrabold">
+                          <span>Sélection Album</span>
+                          <span className="text-brand-gold font-black tabular-nums">{activeClient.selectedPhotoIds.length} / {activeClient.targetCount}</span>
+                        </div>
+                        <div className="h-1.5 w-full bg-brand-sand/35 rounded-full overflow-hidden">
+                          <motion.div
+                            className="h-full gradient-pan rounded-full"
+                            initial={{ width: 0 }}
+                            animate={{ width: `${Math.min(100, (activeClient.selectedPhotoIds.length / activeClient.targetCount) * 100)}%` }}
+                            transition={{ type: "spring", damping: 22, stiffness: 200 }}
+                          />
+                        </div>
+                        <span className="text-[8.5px] text-brand-sage leading-normal font-serif-display italic">
+                          {activeClient.selectedPhotoIds.length >= activeClient.targetCount
+                            ? "🎉 Objectif album complété !"
+                            : `Encore ${activeClient.targetCount - activeClient.selectedPhotoIds.length} clichés à choisir.`}
+                        </span>
                       </div>
-                      <div className="h-1.5 w-full bg-brand-sand/35 rounded-full overflow-hidden">
-                        <motion.div
-                          className="h-full gradient-pan rounded-full"
-                          initial={{ width: 0 }}
-                          animate={{ width: `${Math.min(100, (activeClient.selectedPhotoIds.length / activeClient.targetCount) * 100)}%` }}
-                          transition={{ type: "spring", damping: 22, stiffness: 200 }}
-                        />
-                      </div>
-                      <span className="text-[8.5px] text-brand-sage leading-normal font-serif-display italic">
-                        {activeClient.selectedPhotoIds.length >= activeClient.targetCount
-                          ? "🎉 Objectif album complété !"
-                          : `Encore ${activeClient.targetCount - activeClient.selectedPhotoIds.length} clichés à choisir.`}
-                      </span>
                     </div>
-                  </div>
+                  ) : (
+                    <div
+                      className="flex flex-col items-center justify-center p-2 rounded-xl bg-brand-cream/80 border border-brand-sand/60 text-brand-olive w-full"
+                      title={`Sélection: ${activeClient.selectedPhotoIds.length} / ${activeClient.targetCount}`}
+                    >
+                      <Heart className="w-3.5 h-3.5 text-brand-gold fill-brand-gold/20 mb-0.5" />
+                      <span className="text-[10px] font-black tabular-nums">{activeClient.selectedPhotoIds.length}</span>
+                      <span className="text-[8px] text-brand-sage">/ {activeClient.targetCount}</span>
+                    </div>
+                  )}
 
-                  <div className="space-y-1 flex flex-col">
-                    <span className="text-[8.5px] font-extrabold uppercase text-brand-sage tracking-wider mb-1 block">Navigation</span>
+                  {/* Navigation List */}
+                  <div className="space-y-1 flex flex-col w-full">
+                    {!isClientSidebarCollapsed && (
+                      <span className="text-[8.5px] font-extrabold uppercase text-brand-sage tracking-wider mb-1 block text-left">Navigation</span>
+                    )}
 
                     {[
-                  { tab: 'Swipe' as BottomNavTab, label: 'Tri-photos', Icon: Layers },
-                  { tab: 'Explore' as BottomNavTab, label: 'Ma Sélection', Icon: Heart, badge: activeClient?.selectedPhotoIds.length || 0 },
+                      { tab: 'Swipe' as BottomNavTab, label: 'Tri-photos', Icon: Layers },
+                      { tab: 'Explore' as BottomNavTab, label: 'Ma Sélection', Icon: Heart, badge: activeClient?.selectedPhotoIds.length || 0 },
                       { tab: 'Chat' as BottomNavTab, label: 'Messagerie', Icon: Mail },
                       { tab: 'Profil' as BottomNavTab, label: 'Mon Profil', Icon: User }
                     ].map((item) => (
                       <motion.button
                         key={item.tab}
                         type="button"
-                        whileTap={{ scale: 0.97 }}
+                        whileTap={{ scale: 0.96 }}
                         onClick={() => goToTab(item.tab)}
-                        className={`flex items-center justify-between px-3 py-2 rounded-xl text-left text-[11px] font-extrabold uppercase tracking-wide transition-all cursor-pointer outline-none border-none relative ${
+                        title={isClientSidebarCollapsed ? item.label : undefined}
+                        className={`flex items-center justify-between rounded-xl text-left text-[11px] font-extrabold uppercase tracking-wide transition-all cursor-pointer outline-none border-none relative ${
+                          isClientSidebarCollapsed ? 'p-2.5 justify-center' : 'px-3 py-2'
+                        } ${
                           activeTab === item.tab
                             ? 'bg-brand-olive text-brand-cream shadow-xs'
                             : 'text-brand-sage hover:text-brand-olive hover:bg-brand-cream'
@@ -628,36 +680,47 @@ export default function App() {
                             transition={{ type: "spring", damping: 22, stiffness: 240 }}
                           />
                         )}
-                        <span className="relative z-10 flex items-center gap-2.5">
-                          <item.Icon className="w-3.5 h-3.5" />
-                          <span className="truncate max-w-[120px]">{item.label}</span>
+                        <span className={`relative z-10 flex items-center ${isClientSidebarCollapsed ? 'justify-center' : 'gap-2.5'}`}>
+                          <item.Icon className="w-3.5 h-3.5 shrink-0" />
+                          {!isClientSidebarCollapsed && <span className="truncate max-w-[120px]">{item.label}</span>}
                         </span>
                         {item.badge !== undefined && item.badge > 0 && (
-                          <span className="relative z-10 bg-brand-rose text-white font-bold text-[8.5px] min-w-[16px] h-3.5 flex items-center justify-center px-1 rounded-full leading-none shadow-xs font-sans tabular-nums">{item.badge}</span>
+                          <span className={`relative z-10 bg-brand-rose text-white font-bold text-[8.5px] flex items-center justify-center rounded-full leading-none shadow-xs font-sans tabular-nums ${
+                            isClientSidebarCollapsed ? 'absolute -top-1 -right-1 w-4 h-4 border border-white' : 'min-w-[16px] h-3.5 px-1'
+                          }`}>
+                            {item.badge}
+                          </span>
                         )}
                       </motion.button>
                     ))}
                   </div>
                 </div>
 
-                <div className="pt-4 border-t border-brand-sand shrink-0">
+                {/* Bottom Admin Access */}
+                <div className="pt-3 border-t border-brand-sand shrink-0 w-full">
                   {isAdminAuthorized ? (
                     <button
                       type="button"
                       onClick={handleEnterAdmin}
-                      className="w-full bg-brand-cream hover:bg-brand-sand text-brand-gold hover:text-brand-olive py-2 px-3 rounded-xl text-[9px] font-extrabold uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all cursor-pointer border border-brand-sand"
+                      title={isClientSidebarCollapsed ? "Espace Admin" : undefined}
+                      className={`w-full bg-brand-cream hover:bg-brand-sand text-brand-gold hover:text-brand-olive py-2 rounded-xl text-[9px] font-extrabold uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all cursor-pointer border border-brand-sand ${
+                        isClientSidebarCollapsed ? 'px-1' : 'px-3'
+                      }`}
                     >
-                      <User className="w-3.5 h-3.5 text-brand-gold" />
-                      <span>Espace Admin</span>
+                      <User className="w-3.5 h-3.5 text-brand-gold shrink-0" />
+                      {!isClientSidebarCollapsed && <span>Espace Admin</span>}
                     </button>
                   ) : (
                     <button
                       type="button"
                       onClick={() => { setIsPasscodeModalOpen(true); setAdminPasscode(''); setPasscodeError(''); }}
-                      className="w-full bg-transparent hover:bg-brand-cream text-brand-sage hover:text-brand-olive py-2 px-3 rounded-xl text-[9px] font-extrabold uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all cursor-pointer border border-dashed border-brand-sand"
+                      title={isClientSidebarCollapsed ? "Accès Admin" : undefined}
+                      className={`w-full bg-transparent hover:bg-brand-cream text-brand-sage hover:text-brand-olive py-2 rounded-xl text-[9px] font-extrabold uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all cursor-pointer border border-dashed border-brand-sand ${
+                        isClientSidebarCollapsed ? 'px-1' : 'px-3'
+                      }`}
                     >
-                      <Lock className="w-3 h-3 opacity-60" />
-                      <span>Accès Admin</span>
+                      <Lock className="w-3.5 h-3.5 opacity-60 shrink-0" />
+                      {!isClientSidebarCollapsed && <span>Accès Admin</span>}
                     </button>
                   )}
                 </div>

@@ -588,7 +588,7 @@ async function fetchFullDatabase(): Promise<DBStructure> {
     // Map projects and selections together
     const selectionsMap = new Map((selectionsData || []).map(s => [s.project_id, s]));
     const clientsList = (projectsData || []).map(proj => {
-      const sel = selectionsMap.get(proj.id) || {};
+      const sel: any = selectionsMap.get(proj.id) || {};
       return {
         id: proj.id,
         name: proj.couple,

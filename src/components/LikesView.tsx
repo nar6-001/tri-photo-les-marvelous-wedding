@@ -337,6 +337,16 @@ export default function LikesView({
       {lightboxPhoto && (
         <ZoomLightbox
           photo={lightboxPhoto}
+          photos={viewMode === 'favorites' ? selectedPhotos : allCategoryPhotos}
+          currentIndex={
+            lightboxPhoto
+              ? (viewMode === 'favorites' ? selectedPhotos : allCategoryPhotos).findIndex(p => p.id === lightboxPhoto.id)
+              : 0
+          }
+          onNavigate={(newIdx) => {
+            const list = viewMode === 'favorites' ? selectedPhotos : allCategoryPhotos;
+            if (list[newIdx]) setLightboxPhoto(list[newIdx]);
+          }}
           onClose={() => setLightboxPhoto(null)}
           isLocked={isLocked}
           onRemove={() => onRemoveFavorite(lightboxPhoto.id)}
@@ -422,10 +432,10 @@ function PolaroidCard({
         onMouseLeave={handleMouseLeave}
         className="group relative bg-[var(--bg-panel)] rounded-xl p-3 shadow-md border border-brand-sand/65 flex flex-row gap-4 text-left"
       >
-        <div className="w-28 sm:w-36 aspect-[4/5] rounded-lg bg-[#141612] overflow-hidden relative flex items-center justify-center shrink-0">
+        <div onClick={onZoom} className="w-28 sm:w-36 aspect-[4/5] rounded-lg bg-[#141612] overflow-hidden relative flex items-center justify-center shrink-0 cursor-pointer group/img">
           <SmartImage src={photo.image} alt={photo.name} fit="contain" className="duration-500 group-hover:scale-[1.03]" />
           <div className="absolute top-1.5 right-1.5 flex gap-1 z-15">
-            <button type="button" onClick={onZoom} aria-label="Agrandir"
+            <button type="button" onClick={(e) => { e.stopPropagation(); onZoom(); }} aria-label="Agrandir"
               className="w-6.5 h-6.5 rounded-lg bg-brand-cream/95 hover:bg-[var(--bg-panel)] text-brand-olive flex items-center justify-center border border-brand-sand shadow-sm transition-all cursor-pointer">
               <ZoomIn className="w-3.5 h-3.5" />
             </button>
@@ -433,7 +443,7 @@ function PolaroidCard({
               <motion.button
                 whileTap={{ scale: 0.85 }}
                 type="button"
-                onClick={onToggle}
+                onClick={(e) => { e.stopPropagation(); onToggle(); }}
                 className={`w-6.5 h-6.5 rounded-lg flex items-center justify-center border shadow-sm transition-all cursor-pointer ${
                   isFavorite ? 'bg-[#ffebee] border-red-200 text-red-500' : 'bg-brand-cream/95 border-brand-sand text-brand-sage hover:text-brand-gold'
                 }`}
@@ -509,19 +519,19 @@ function PolaroidCard({
         transition={{ delay: Math.min(index * 0.02, 0.2), type: "spring", damping: 18, stiffness: 220 }}
         className="group relative bg-[var(--bg-panel)] rounded-lg p-1.5 shadow-sm border border-brand-sand/50 flex flex-col text-left"
       >
-        <div className="aspect-square rounded-md bg-[#141612] overflow-hidden relative flex items-center justify-center">
+        <div onClick={onZoom} className="aspect-square rounded-md bg-[#141612] overflow-hidden relative flex items-center justify-center cursor-pointer group/img">
           <SmartImage src={photo.image} alt={photo.name} fit="cover" className="duration-500 group-hover:scale-[1.03]" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/10 via-transparent to-transparent" />
 
           <div className="absolute top-1 right-1 flex gap-0.5 z-15">
-            <button type="button" onClick={onZoom} aria-label="Agrandir"
+            <button type="button" onClick={(e) => { e.stopPropagation(); onZoom(); }} aria-label="Agrandir"
               className="w-5 h-5 rounded bg-brand-cream/95 hover:bg-[var(--bg-panel)] text-brand-olive flex items-center justify-center border border-brand-sand/70 shadow-sm transition-all cursor-pointer">
               <ZoomIn className="w-2.5 h-2.5" />
             </button>
             {!isLocked ? (
               <button
                 type="button"
-                onClick={onToggle}
+                onClick={(e) => { e.stopPropagation(); onToggle(); }}
                 className={`w-5 h-5 rounded flex items-center justify-center border shadow-sm transition-all cursor-pointer ${
                   isFavorite ? 'bg-[#ffebee] border-red-200 text-red-500' : 'bg-brand-cream/95 border-brand-sand text-brand-sage hover:text-brand-gold'
                 }`}
@@ -563,12 +573,12 @@ function PolaroidCard({
       style={{ transition: "transform 220ms ease-out" }}
       className="group relative bg-[var(--bg-panel)] rounded-xl p-2.5 shadow-md border border-brand-sand/60 flex flex-col text-left polaroid-frame"
     >
-      <div className="aspect-[4/5] rounded-lg bg-[#141612] overflow-hidden relative flex items-center justify-center">
+      <div onClick={onZoom} className="aspect-[4/5] rounded-lg bg-[#141612] overflow-hidden relative flex items-center justify-center cursor-pointer group/img">
         <SmartImage src={photo.image} alt={photo.name} fit="contain" className="duration-500 group-hover:scale-[1.04]" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-80" />
 
         <div className="absolute top-1.5 right-1.5 flex gap-1 z-15">
-          <button type="button" onClick={onZoom} aria-label="Agrandir"
+          <button type="button" onClick={(e) => { e.stopPropagation(); onZoom(); }} aria-label="Agrandir"
             className="w-6.5 h-6.5 rounded-lg bg-brand-cream/95 hover:bg-[var(--bg-panel)] text-brand-olive flex items-center justify-center border border-brand-sand shadow-sm active:scale-90 transition-all cursor-pointer">
             <ZoomIn className="w-3.5 h-3.5" />
           </button>
@@ -576,7 +586,7 @@ function PolaroidCard({
             <motion.button
               whileTap={{ scale: 0.85 }}
               type="button"
-              onClick={onToggle}
+              onClick={(e) => { e.stopPropagation(); onToggle(); }}
               aria-label={isFavorite ? "Retirer des favoris" : "Ajouter aux favoris"}
               className={`w-6.5 h-6.5 rounded-lg flex items-center justify-center border shadow-sm transition-all cursor-pointer ${
                 isFavorite ? 'bg-[#ffebee] border-red-200 text-red-500' : 'bg-brand-cream/95 border-brand-sand text-brand-sage hover:text-brand-gold'
