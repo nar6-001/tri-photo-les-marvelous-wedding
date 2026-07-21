@@ -261,13 +261,6 @@ export default function AdminView({
   const [confirmDeletePhotoId, setConfirmDeletePhotoId] = useState<string | null>(null);
   const [confirmDeleteCategoryKey, setConfirmDeleteCategoryKey] = useState<string | null>(null);
   const [confirmDeleteProjectId, setConfirmDeleteProjectId] = useState<string | null>(null);
-  const [folderDeleteModal, setFolderDeleteModal] = useState<{
-    key: string;
-    label: string;
-    clientId?: string;
-    clientName?: string;
-    count: number;
-  } | null>(null);
 
   // Couple enhancements: tags + internal notes (local extension)
   const [clientTags, setClientTags] = useState<Record<string, string[]>>(() => {
@@ -2739,13 +2732,7 @@ export default function AdminView({
                                       </button>
                                       <button
                                         type="button"
-                                        onClick={() => setFolderDeleteModal({
-                                          key: tab,
-                                          label: label,
-                                          clientId: targetClient.id,
-                                          clientName: targetClient.name,
-                                          count: tabPhotosCount
-                                        })}
+                                        onClick={() => setConfirmDeleteCategoryKey(tab)}
                                         title={`Supprimer le dossier "${label}"`}
                                         className="px-1.5 py-1 rounded-r text-[9.5px] uppercase select-none cursor-pointer border border-l-0 bg-red-50 text-red-600 border-brand-sand hover:bg-red-600 hover:text-white hover:border-red-600 transition-all flex items-center justify-center"
                                       >
@@ -5609,13 +5596,7 @@ export default function AdminView({
                     {/* Delete category item option */}
                     <button
                       type="button"
-                      onClick={() => setFolderDeleteModal({
-                        key: key,
-                        label: label,
-                        clientId: undefined,
-                        clientName: undefined,
-                        count: photos.filter(p => p.category === key).length
-                      })}
+                      onClick={() => setConfirmDeleteCategoryKey(key)}
                       className="mt-3.5 w-8 h-8 rounded-lg bg-red-50 hover:bg-red-100 border border-red-200 text-red-600 flex items-center justify-center cursor-pointer transition-colors"
                       title="Supprimer la catégorie"
                       aria-label={`Supprimer la catégorie ${label}`}
@@ -6034,172 +6015,22 @@ export default function AdminView({
         onClose={() => setConfirmDeleteSelected(false)}
       />
 
-      {/* =================== FOLDER DELETE CHOICE MODAL =================== */}
-      {folderDeleteModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/65 backdrop-blur-md p-4 animate-fade-in" onClick={() => setFolderDeleteModal(null)}>
-          <motion.div
-            initial={{ scale: 0.94, opacity: 0, y: 15 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0.94, opacity: 0, y: 15 }}
-            className="bg-white border border-brand-sand/80 rounded-3xl p-6 w-full max-w-lg shadow-2xl text-left space-y-5"
-            onClick={e => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div className="flex items-start justify-between border-b border-brand-sand/40 pb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl bg-red-50 border border-red-200 text-red-600 flex items-center justify-center shrink-0 shadow-xs">
-                  <Trash2 className="w-6 h-6" />
-                </div>
-                <div>
-                  <h3 className="font-serif-display font-bold text-brand-olive text-lg leading-snug">
-                    Supprimer le dossier "{folderDeleteModal.label}" ?
-                  </h3>
-                  <p className="text-xs text-brand-sage font-medium mt-0.5">
-                    {folderDeleteModal.clientName ? `Projet : ${folderDeleteModal.clientName} • ` : ''}
-                    <span className="font-bold text-brand-olive">{folderDeleteModal.count} photo(s)</span> rattachée(s)
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setFolderDeleteModal(null)}
-                className="text-brand-sand hover:text-brand-olive p-1 rounded-lg transition-colors cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <p className="text-xs text-brand-sage leading-relaxed">
-              Que souhaitez-vous faire des <strong className="text-brand-olive font-extrabold">{folderDeleteModal.count} photo(s)</strong> de ce dossier ? Choisissez l'une des 2 options ci-dessous :
-            </p>
-
-            {/* Choices */}
-            <div className="space-y-3">
-              {/* CHOICE A: Keep photos */}
-              <button
-                type="button"
-                onClick={() => {
-                  const { key, clientId, label, count } = folderDeleteModal;
-                  
-                  // 1. Update category labels
-                  const updatedLabels = { ...editableCategoryLabels };
-                  delete updatedLabels[key];
-                  setEditableCategoryLabels(updatedLabels);
-
-                  // 2. Update client quotas if specific client
-                  if (clientId) {
-                    const updatedClients = clients.map(c => {
-                      if (c.id === clientId && c.targetCategoryQuotas) {
-                        const q = { ...c.targetCategoryQuotas };
-                        delete q[key];
-                        return { ...c, targetCategoryQuotas: q };
-                      }
-                      return c;
-                    });
-                    saveClients(updatedClients);
-                    setClients(updatedClients);
-                  }
-
-                  // 3. Keep photos, remove category assignment
-                  const updatedPhotos = photos.map(p => {
-                    if ((!clientId || p.clientId === clientId) && p.category === key) {
-                      return { ...p, category: '' as any };
-                    }
-                    return p;
-                  });
-                  saveGlobalPhotos(updatedPhotos);
-                  setPhotos(updatedPhotos);
-
-                  fetch("/api/photos", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ globalPhotos: updatedPhotos })
-                  }).then(() => loadDatabaseState()).catch(() => {});
-
-                  setFolderDeleteModal(null);
-                  toast.success(`Dossier "${label}" supprimé. Les ${count} photo(s) ont été conservées dans la galerie globale.`);
-                }}
-                className="w-full text-left bg-amber-50 hover:bg-amber-100/90 text-amber-950 p-4 rounded-2xl border-2 border-amber-300 transition-all group cursor-pointer shadow-xs active:scale-[0.99]"
-              >
-                <div className="flex items-center justify-between font-extrabold text-xs tracking-wide uppercase text-amber-900">
-                  <span className="flex items-center gap-2">
-                    🏷️ 1. Supprimer UNIQUEMENT le dossier
-                  </span>
-                  <span className="text-[9.5px] bg-amber-200/80 text-amber-950 px-2 py-0.5 rounded-full font-mono font-bold">Conserver les clichés</span>
-                </div>
-                <p className="text-[11px] text-amber-800 font-semibold mt-1.5 leading-snug">
-                  Le dossier est retiré de la liste, mais <strong>toutes les photos restent intactes</strong> dans la galerie globale (onglet TOUS).
-                </p>
-              </button>
-
-              {/* CHOICE B: Delete folder AND photos */}
-              <button
-                type="button"
-                onClick={() => {
-                  const { key, clientId, label, count } = folderDeleteModal;
-
-                  // 1. Update category labels
-                  const updatedLabels = { ...editableCategoryLabels };
-                  delete updatedLabels[key];
-                  setEditableCategoryLabels(updatedLabels);
-
-                  if (clientId) {
-                    const updatedClients = clients.map(c => {
-                      if (c.id === clientId && c.targetCategoryQuotas) {
-                        const q = { ...c.targetCategoryQuotas };
-                        delete q[key];
-                        return { ...c, targetCategoryQuotas: q };
-                      }
-                      return c;
-                    });
-                    saveClients(updatedClients);
-                    setClients(updatedClients);
-                  }
-
-                  // 2. Filter out photos belonging to this folder
-                  const photosToDelete = photos.filter(p => (!clientId || p.clientId === clientId) && p.category === key);
-                  const updatedPhotos = photos.filter(p => !((!clientId || p.clientId === clientId) && p.category === key));
-
-                  saveGlobalPhotos(updatedPhotos);
-                  setPhotos(updatedPhotos);
-                  onRefreshPhotos?.();
-
-                  fetch("/api/photos", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ globalPhotos: updatedPhotos })
-                  }).then(() => loadDatabaseState()).catch(() => {});
-
-                  setFolderDeleteModal(null);
-                  toast.error(`Dossier "${label}" et ses ${photosToDelete.length} photo(s) ont été définitivement supprimés.`);
-                }}
-                className="w-full text-left bg-red-50 hover:bg-red-100/90 text-red-950 p-4 rounded-2xl border-2 border-red-300 transition-all group cursor-pointer shadow-xs active:scale-[0.99]"
-              >
-                <div className="flex items-center justify-between font-extrabold text-xs tracking-wide uppercase text-red-900">
-                  <span className="flex items-center gap-2">
-                    💣 2. Supprimer le dossier ET tout son contenu
-                  </span>
-                  <span className="text-[9.5px] bg-red-200/80 text-red-950 px-2 py-0.5 rounded-full font-mono font-bold">{folderDeleteModal.count} photo(s)</span>
-                </div>
-                <p className="text-[11px] text-red-800 font-semibold mt-1.5 leading-snug">
-                  Le dossier est supprimé et <strong>les {folderDeleteModal.count} photo(s) sont définitivement détruites</strong> (retirées de la base et nettoyées).
-                </p>
-              </button>
-            </div>
-
-            {/* Footer / Cancel */}
-            <div className="pt-2 border-t border-brand-sand/40 flex justify-end">
-              <button
-                type="button"
-                onClick={() => setFolderDeleteModal(null)}
-                className="px-5 py-2 rounded-xl border border-brand-sand bg-stone-100 hover:bg-stone-200 text-brand-olive text-xs font-bold transition-all cursor-pointer"
-              >
-                Annuler
-              </button>
-            </div>
-          </motion.div>
-        </div>
-      )}
+      <ConfirmModal
+        open={!!confirmDeleteCategoryKey}
+        title="Supprimer cette catégorie ?"
+        message="Les photos existantes ne seront pas supprimées mais elles ne seront plus catégorisées. Les quotas associés seront masqués."
+        confirmLabel="Supprimer la catégorie"
+        danger
+        onConfirm={() => {
+          const k = confirmDeleteCategoryKey!;
+          const updated = { ...editableCategoryLabels };
+          delete updated[k];
+          setEditableCategoryLabels(updated);
+          setConfirmDeleteCategoryKey(null);
+          toast.success("Catégorie supprimée");
+        }}
+        onClose={() => setConfirmDeleteCategoryKey(null)}
+      />
 
       <ConfirmModal
         open={!!confirmDeleteProjectId}
