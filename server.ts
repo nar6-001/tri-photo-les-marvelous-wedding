@@ -1259,6 +1259,12 @@ async function startServer() {
     console.log("Starting server in PRODUCTION mode (Static files from dist)...");
     const distPath = path.join(process.cwd(), "dist");
     app.use(express.static(distPath));
+
+    // Return 404 for missing static assets under /assets/ instead of fallback index.html (prevents MIME errors)
+    app.use("/assets", (req, res) => {
+      res.status(404).send("Asset not found");
+    });
+
     app.get("*", (req, res) => {
       res.sendFile(path.join(distPath, "index.html"));
     });
