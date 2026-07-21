@@ -214,6 +214,14 @@ export default function AdminView({
   const [projectGalleryFilter, setProjectGalleryFilter] = useState<string>('ALL');
   const [previewPhoto, setPreviewPhoto] = useState<WeddingPhoto | null>(null);
 
+  // Batch rendering pagination limits for maximum reactivity with 5000+ photos
+  const [detailGalleryLimit, setDetailGalleryLimit] = useState<number>(48);
+  const [mainGalleryLimit, setMainGalleryLimit] = useState<number>(48);
+
+  useEffect(() => {
+    setDetailGalleryLimit(48);
+  }, [projectGalleryFilter, enteredClientId]);
+
   useEffect(() => {
     setEditableCategoryLabels({ ...categoryLabels });
   }, [categoryLabels]);
@@ -232,6 +240,7 @@ export default function AdminView({
 
   // Status Filter & Search for Couples list
   const [statusFilter, setStatusFilter] = useState<'Tous' | 'En cours' | 'Quota Atteint' | 'Clôturé'>('Tous');
+  const [dashboardFilter, setDashboardFilter] = useState<'all' | 'in_progress' | 'quota_reached' | 'closed'>('in_progress');
   const [clientSearchQuery, setClientSearchQuery] = useState('');
 
   // Cover photo selection popup list
@@ -1633,6 +1642,235 @@ export default function AdminView({
                   </button>
                 ))}
               </div>
+
+              {/* Accès Rapide aux Projets Récent & En Cours */}
+              <div className="bg-[var(--bg-panel)] border border-brand-sand/70 rounded-2xl p-4 sm:p-5 space-y-4 shadow-sm">
+                {/* Section Header */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-brand-sand/40">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-olive to-brand-moss text-brand-cream flex items-center justify-center shadow-xs shrink-0">
+                      <FolderOpen className="w-4 h-4 text-brand-gold" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h2 className="text-xs sm:text-sm font-serif-display font-black text-brand-olive uppercase tracking-wide">
+                          Accès Rapide aux Projets
+                        </h2>
+                        <span className="bg-brand-cream text-brand-olive border border-brand-sand text-[9px] px-2 py-0.5 rounded-full font-mono font-bold">
+                          {clients.length} couples
+                        </span>
+                      </div>
+                      <p className="text-[10.5px] text-brand-sage">
+                        Vos dossiers récents et mariés en cours de tri &amp; sélection
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {[
+                      { id: 'in_progress' as const, label: 'En cours', count: clients.filter(c => getCoupleStatus(c) === 'En cours').length, color: 'text-blue-700 bg-blue-50 border-blue-200' },
+                      { id: 'quota_reached' as const, label: 'Quota atteint', count: clients.filter(c => getCoupleStatus(c) === 'Quota Atteint').length, color: 'text-amber-700 bg-amber-50 border-amber-200' },
+                      { id: 'closed' as const, label: 'Clôturés', count: clients.filter(c => getCoupleStatus(c) === 'Clôturé').length, color: 'text-emerald-700 bg-emerald-50 border-emerald-200' },
+                      { id: 'all' as const, label: 'Tous', count: clients.length, color: 'text-brand-olive bg-brand-cream border-brand-sand' }
+                    ].map(tab => {
+                      const isSelected = dashboardFilter === tab.id;
+                      return (
+                        <button
+                          key={tab.id}
+                          type="button"
+                          onClick={() => setDashboardFilter(tab.id)}
+                          className={`px-2.5 py-1 rounded-xl text-[9.5px] font-extrabold uppercase tracking-wider border cursor-pointer transition-all duration-200 flex items-center gap-1.5 ${
+                            isSelected
+                              ? 'bg-brand-olive text-white border-brand-olive shadow-xs'
+                              : 'bg-white text-brand-sage border-brand-sand/80 hover:bg-brand-cream hover:text-brand-olive'
+                          }`}
+                        >
+                          <span>{tab.label}</span>
+                          <span className={`text-[8.5px] px-1.5 py-0.2 rounded-full font-mono font-bold ${
+                            isSelected ? 'bg-white/20 text-white' : tab.color
+                          }`}>
+                            {tab.count}
+                          </span>
+                        </button>
+                      );
+                    })}
+
+                    <button
+                      type="button"
+                      onClick={() => goToSection('clients')}
+                      className="ml-auto text-[9.5px] font-extrabold uppercase tracking-wider text-brand-gold hover:text-brand-olive flex items-center gap-1 cursor-pointer transition-colors"
+                    >
+                      Voir tous <ChevronRight className="w-3 h-3" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Projects Grid */}
+                {(() => {
+                  const displayedClients = clients.filter(c => {
+                    const status = getCoupleStatus(c);
+                    if (dashboardFilter === 'in_progress') return status === 'En cours';
+                    if (dashboardFilter === 'quota_reached') return status === 'Quota Atteint';
+                    if (dashboardFilter === 'closed') return status === 'Clôturé';
+                    return true;
+                  });
+
+                  if (displayedClients.length === 0) {
+                    return (
+                      <div className="text-center py-8 border border-dashed border-brand-sand bg-brand-cream/20 rounded-2xl">
+                        <Users className="w-7 h-7 text-brand-sand mx-auto mb-1.5" />
+                        <p className="text-xs text-brand-sage italic font-medium">Aucun projet ne correspond au filtre sélectionné.</p>
+                        <button
+                          type="button"
+                          onClick={() => setDashboardFilter('all')}
+                          className="mt-2.5 inline-flex items-center gap-1 bg-brand-cream border border-brand-sand text-brand-olive text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-xl hover:bg-white cursor-pointer"
+                        >
+                          Afficher tous les couples
+                        </button>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                      {displayedClients.map(client => {
+                        const status = getCoupleStatus(client);
+                        const progressVal = client.targetCount > 0
+                          ? Math.min(100, Math.round((client.selectedPhotoIds.length / client.targetCount) * 100))
+                          : 0;
+                        const clientPhotos = photos.filter(p => p.clientId === client.id);
+                        const coverPhoto = photos.find(p => p.id === client.coverPhotoId) || clientPhotos[0] || photos.find(p => client.selectedPhotoIds.includes(p.id));
+                        const isCopied = copiedClientId === client.id;
+
+                        return (
+                          <motion.div
+                            key={client.id}
+                            initial={{ opacity: 0, y: 8 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            whileHover={{ y: -2 }}
+                            className="bg-white border border-brand-sand/80 hover:border-brand-gold/60 rounded-2xl p-4 shadow-sm hover:shadow-md transition-all flex flex-col justify-between space-y-3 group"
+                          >
+                            {/* Top info */}
+                            <div className="space-y-3">
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex items-center gap-3 min-w-0">
+                                  {coverPhoto?.image ? (
+                                    <img
+                                      src={coverPhoto.image}
+                                      alt={client.name}
+                                      referrerPolicy="no-referrer"
+                                      className="w-11 h-11 rounded-xl object-cover border-2 border-brand-cream shadow-xs shrink-0 group-hover:scale-105 transition-transform"
+                                    />
+                                  ) : (
+                                    <Avatar name={client.name} size={44} />
+                                  )}
+                                  <div className="min-w-0">
+                                    <h3 className="text-sm font-serif-display font-black text-brand-olive truncate leading-snug">
+                                      {client.name}
+                                    </h3>
+                                    <span className="text-[9px] font-mono font-bold text-brand-sage bg-brand-cream border border-brand-sand/60 px-1.5 py-0.5 rounded tracking-wider inline-block">
+                                      #{client.id}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                {/* Status Badge */}
+                                <div className="shrink-0">
+                                  {status === 'Clôturé' ? (
+                                    <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[8.5px] px-2 py-0.5 rounded-full uppercase tracking-wider font-extrabold flex items-center gap-1 shadow-2xs">
+                                      <Check className="w-2.5 h-2.5" /> Validé
+                                    </span>
+                                  ) : status === 'Quota Atteint' ? (
+                                    <span className="bg-amber-50 text-amber-700 border border-amber-200 text-[8.5px] px-2 py-0.5 rounded-full uppercase tracking-wider font-extrabold flex items-center gap-1 shadow-2xs">
+                                      <Bookmark className="w-2.5 h-2.5" /> Quota 100%
+                                    </span>
+                                  ) : (
+                                    <span className="bg-blue-50 text-blue-700 border border-blue-200 text-[8.5px] px-2 py-0.5 rounded-full uppercase tracking-wider font-extrabold flex items-center gap-1 shadow-2xs">
+                                      <RefreshCw className="w-2.5 h-2.5 animate-spin" /> En cours
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Progress bar */}
+                              <div className="bg-brand-cream/60 border border-brand-sand/50 rounded-xl p-2.5 space-y-1.5">
+                                <div className="flex items-center justify-between text-[10px] font-bold text-brand-olive">
+                                  <span className="text-brand-sage text-[9.5px]">Sélection d'album</span>
+                                  <span className="tabular-nums font-mono">
+                                    {client.selectedPhotoIds.length} <span className="text-brand-sage font-normal">/ {client.targetCount} ({progressVal}%)</span>
+                                  </span>
+                                </div>
+                                <div className="w-full bg-brand-sand/50 rounded-full h-1.5 overflow-hidden">
+                                  <div
+                                    className={`h-full rounded-full transition-all duration-500 ${
+                                      status === 'Clôturé'
+                                        ? 'bg-emerald-500'
+                                        : status === 'Quota Atteint'
+                                        ? 'bg-amber-500'
+                                        : 'bg-brand-olive'
+                                    }`}
+                                    style={{ width: `${progressVal}%` }}
+                                  />
+                                </div>
+                              </div>
+
+                              {/* Metadata chips */}
+                              <div className="flex items-center gap-2 flex-wrap text-[9px]">
+                                {client.weddingDate && (
+                                  <span className="inline-flex items-center gap-1 bg-amber-50/70 border border-amber-200/50 px-2 py-0.5 rounded-md text-amber-800 font-bold">
+                                    <Calendar className="w-2.5 h-2.5 text-amber-600" /> {client.weddingDate}
+                                  </span>
+                                )}
+                                {client.country && (
+                                  <span className="inline-flex items-center gap-1 bg-emerald-50/70 border border-emerald-200/50 px-2 py-0.5 rounded-md text-emerald-800 font-bold">
+                                    <Globe className="w-2.5 h-2.5 text-emerald-600" /> {client.country === 'France' ? '🇫🇷 FR' : client.country === 'Cameroun' ? '🇨🇲 CM' : client.country}
+                                  </span>
+                                )}
+                                <span className="inline-flex items-center gap-1 bg-brand-cream border border-brand-sand/50 px-2 py-0.5 rounded-md text-brand-sage font-bold">
+                                  <ImageIcon className="w-2.5 h-2.5 text-brand-gold" /> {clientPhotos.length} photos
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Action Buttons */}
+                            <div className="pt-2 border-t border-brand-sand/40 flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => openCouple(client.id)}
+                                className="flex-1 flex items-center justify-center gap-1.5 bg-brand-olive hover:bg-brand-moss text-white text-[9.5px] font-extrabold uppercase tracking-wider py-2 rounded-xl transition-all shadow-xs cursor-pointer"
+                              >
+                                <FolderOpen className="w-3 h-3 text-brand-gold" /> Ouvrir l'atelier
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => onSwitchToClient(client.id)}
+                                title="Voir l'espace client"
+                                className="flex items-center justify-center gap-1 bg-brand-cream hover:bg-brand-sand/60 border border-brand-sand/80 text-brand-olive text-[9.5px] font-extrabold uppercase tracking-wider px-2.5 py-2 rounded-xl transition-all cursor-pointer"
+                              >
+                                <Eye className="w-3 h-3 text-brand-gold" />
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleCopyAccessLink(client.id)}
+                                title="Copier le lien d'accès client"
+                                className={`flex items-center justify-center gap-1 border text-[9.5px] font-extrabold uppercase tracking-wider px-2.5 py-2 rounded-xl transition-all cursor-pointer ${
+                                  isCopied
+                                    ? 'bg-emerald-50 border-emerald-300 text-emerald-700'
+                                    : 'bg-brand-cream hover:bg-brand-sand/60 border-brand-sand/80 text-brand-olive'
+                                }`}
+                              >
+                                {isCopied ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3 text-brand-sage" />}
+                              </button>
+                            </div>
+                          </motion.div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+              </div>
             </div>
           )}
 
@@ -1666,7 +1904,9 @@ export default function AdminView({
               }
             }
           });
-          const clientPhotos = photos.filter(p => p.clientId === targetClient.id);
+          const clientPhotos = useMemo(() => {
+            return photos.filter(p => p.clientId === targetClient.id);
+          }, [photos, targetClient.id]);
           const coverPhoto = photos.find(p => p.id === targetClient.coverPhotoId) || photos[0];
 
           return (
@@ -1805,7 +2045,7 @@ export default function AdminView({
                         setEditClientCountry(targetClient.country || 'France');
                         setEditClientNotes(targetClient.notes || '');
                         const quotas: Record<string, string> = {};
-                        Object.keys(currentCategoryLabels).forEach(cat => {
+                        Object.keys(targetClient.categoryLabels || categoryLabels).forEach(cat => {
                           let val = 0;
                           if (targetClient.targetCategoryQuotas && targetClient.targetCategoryQuotas[cat] !== undefined) {
                             val = targetClient.targetCategoryQuotas[cat];
@@ -2497,49 +2737,74 @@ export default function AdminView({
                             </button>
                           </div>
 
-                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                            {clientPhotos
+                          {(() => {
+                            const filteredList = clientPhotos
                               .filter(p => projectGalleryFilter === 'ALL' || p.category === projectGalleryFilter)
-                              .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }))
-                              .map(photo => (
-                                <div 
-                                  key={photo.id}
-                                  className="group relative aspect-[3/4] p-1 rounded-lg bg-white shadow-3xs border border-brand-sand flex flex-col justify-end overflow-hidden"
-                                >
-                                  <img 
-                                    src={photo.image} 
-                                    alt={photo.name} 
-                                    referrerPolicy="no-referrer"
-                                    className="absolute inset-0 w-full h-full object-cover rounded-md group-hover:scale-105 duration-300 transition-all cursor-zoom-in"
-                                    onClick={() => setPreviewPhoto(photo)}
-                                  />
-                                  
-                                  {/* Hover overlay uploader panel */}
-                                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 duration-200">
-                                    <button
-                                      type="button"
-                                      onClick={() => setPreviewPhoto(photo)}
-                                      className="w-7.5 h-7.5 rounded-full bg-brand-olive text-white flex items-center justify-center shadow-md hover:bg-brand-moss active:scale-90 transition-all cursor-pointer"
-                                      title="Prévisualiser la photo"
-                                    >
-                                      <ZoomIn className="w-3.5 h-3.5" />
-                                    </button>
-                                    <button
-                                      type="button"
-                                    onClick={() => setConfirmDeletePhotoId(photo.id)}
-                                      className="w-7.5 h-7.5 rounded-full bg-red-500 hover:bg-red-600 text-white flex items-center justify-center shadow-md active:scale-95 transition-all cursor-pointer"
-                                      title="Supprimer la photo de l'album"
-                                    >
-                                      <Trash2 className="w-3.5 h-3.5" />
-                                    </button>
-                                  </div>
+                              .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
 
-                                  <div className="absolute inset-x-0 bottom-0 bg-black/75 text-[7.5px] px-1.5 py-1 truncate text-center text-white rounded-b-md">
-                                    {photo.name}
-                                  </div>
+                            const visibleList = filteredList.slice(0, detailGalleryLimit);
+
+                            return (
+                              <>
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                  {visibleList.map(photo => (
+                                    <div 
+                                      key={photo.id}
+                                      className="group relative aspect-[3/4] p-1 rounded-lg bg-white shadow-3xs border border-brand-sand flex flex-col justify-end overflow-hidden"
+                                    >
+                                      <img 
+                                        src={photo.image} 
+                                        alt={photo.name} 
+                                        referrerPolicy="no-referrer"
+                                        className="absolute inset-0 w-full h-full object-cover rounded-md group-hover:scale-105 duration-300 transition-all cursor-zoom-in"
+                                        onClick={() => setPreviewPhoto(photo)}
+                                      />
+                                      
+                                      {/* Hover overlay uploader panel */}
+                                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 duration-200">
+                                        <button
+                                          type="button"
+                                          onClick={() => setPreviewPhoto(photo)}
+                                          className="w-7.5 h-7.5 rounded-full bg-brand-olive text-white flex items-center justify-center shadow-md hover:bg-brand-moss active:scale-90 transition-all cursor-pointer"
+                                          title="Prévisualiser la photo"
+                                        >
+                                          <ZoomIn className="w-3.5 h-3.5" />
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => setConfirmDeletePhotoId(photo.id)}
+                                          className="w-7.5 h-7.5 rounded-full bg-red-500 hover:bg-red-600 text-white flex items-center justify-center shadow-md active:scale-95 transition-all cursor-pointer"
+                                          title="Supprimer la photo de l'album"
+                                        >
+                                          <Trash2 className="w-3.5 h-3.5" />
+                                        </button>
+                                      </div>
+
+                                      <div className="absolute inset-x-0 bottom-0 bg-black/75 text-[7.5px] px-1.5 py-1 truncate text-center text-white rounded-b-md">
+                                        {photo.name}
+                                      </div>
+                                    </div>
+                                  ))}
                                 </div>
-                              ))}
-                          </div>
+
+                                {filteredList.length > visibleList.length && (
+                                  <div className="flex flex-col items-center justify-center pt-6 pb-2 space-y-2">
+                                    <span className="text-[11px] text-brand-sage font-extrabold uppercase tracking-wider font-mono">
+                                      Affichage de {visibleList.length} sur {filteredList.length} photos
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => setDetailGalleryLimit(prev => prev + 96)}
+                                      className="bg-brand-olive hover:bg-brand-gold text-brand-cream px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all cursor-pointer shadow-md hover:shadow-lg active:scale-95 flex items-center gap-2"
+                                    >
+                                      <Plus className="w-4 h-4" />
+                                      <span>Charger la suite (+96 photos)</span>
+                                    </button>
+                                  </div>
+                                )}
+                              </>
+                            );
+                          })()}
                         </div>
                       )}
 
@@ -5142,22 +5407,16 @@ export default function AdminView({
                   return <EmptyStateIllustration type="gallery" message="Aucun cliché ne correspond à vos filtres." />;
                 }
 
+                const visibleGallery = filteredGallery.slice(0, mainGalleryLimit);
+
                 return (
-                  <motion.div
-                    layout
-                    className={`grid gap-3 ${galleryLayout === "3x3" ? "grid-cols-3" : galleryLayout === "4x4" ? "grid-cols-2 md:grid-cols-4" : "grid-cols-2"}`}
-                  >
-                    <AnimatePresence>
-                      {filteredGallery.map(photo => {
+                  <div className="space-y-4">
+                    <div className={`grid gap-3 ${galleryLayout === "3x3" ? "grid-cols-3" : galleryLayout === "4x4" ? "grid-cols-2 md:grid-cols-4" : "grid-cols-2"}`}>
+                      {visibleGallery.map(photo => {
                         const isSelected = selectedPhotoIds.has(photo.id);
                         return (
-                          <motion.div
+                          <div
                             key={photo.id}
-                            layout
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.9 }}
-                            whileHover={{ y: -2 }}
                             className={`group relative aspect-[3/4] p-1.5 rounded bg-white shadow-sm border flex flex-col justify-end overflow-hidden cursor-pointer transition-all ${
                               isSelected ? "border-brand-gold ring-2 ring-brand-gold/40" : "border-brand-sand"
                             }`}
@@ -5182,7 +5441,6 @@ export default function AdminView({
                                 fit="cover"
                                 className="absolute inset-0 w-full h-full transition-transform group-hover:scale-105"
                               />
-                              {/* Selection checkbox */}
                               <button
                                 type="button"
                                 onClick={(e) => { e.stopPropagation(); setSelectedPhotoIds(prev => { const n = new Set(prev); if (n.has(photo.id)) n.delete(photo.id); else n.add(photo.id); return n; }); }}
@@ -5205,13 +5463,13 @@ export default function AdminView({
                               </div>
                             </div>
 
-                            <div className="pt-1.5 text-center">
-                              <p className="text-[10px] text-brand-olive font-bold truncate leading-tight">{photo.name}</p>
-                              <div className="flex flex-wrap items-center justify-center gap-1 mt-1 font-sans">
-                                <span className="inline-block bg-brand-cream text-brand-sage font-extrabold text-[7.5px] uppercase tracking-wider px-1.5 py-0.5 rounded-full border border-brand-sand">
-                                  {(() => {
-                                    const pClient = photo.clientId ? clients.find(c => c.id === photo.clientId) : null;
-                                    const pLabels = pClient?.categoryLabels || categoryLabels;
+                            <div className="pt-1.5 flex items-center justify-between text-[9px] text-brand-olive font-extrabold gap-1">
+                              <span className="truncate flex-1" title={photo.name}>{photo.name}</span>
+                              <div className="flex items-center gap-1 shrink-0">
+                                <span className="inline-block bg-[#F2F7F4] text-[#2c6e49] border border-[#d3e5d9] font-extrabold text-[7.5px] uppercase tracking-wider px-1.5 py-0.5 rounded-full shrink-0">
+                                  🏷️ {(() => {
+                                    const proj = clients.find(c => c.id === photo.clientId);
+                                    const pLabels = proj?.categoryLabels || categoryLabels;
                                     return pLabels[photo.category] || photo.category;
                                   })()}
                                 </span>
@@ -5222,11 +5480,27 @@ export default function AdminView({
                                 )}
                               </div>
                             </div>
-                          </motion.div>
+                          </div>
                         );
                       })}
-                    </AnimatePresence>
-                  </motion.div>
+                    </div>
+
+                    {filteredGallery.length > visibleGallery.length && (
+                      <div className="flex flex-col items-center justify-center pt-6 pb-2 space-y-2">
+                        <span className="text-[11px] text-brand-sage font-extrabold uppercase tracking-wider font-mono">
+                          Affichage de {visibleGallery.length} sur {filteredGallery.length} photos
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setMainGalleryLimit(prev => prev + 96)}
+                          className="bg-brand-olive hover:bg-brand-gold text-brand-cream px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all cursor-pointer shadow-md hover:shadow-lg active:scale-95 flex items-center gap-2"
+                        >
+                          <Plus className="w-4 h-4" />
+                          <span>Charger la suite (+96 photos)</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 );
               })()}
 
