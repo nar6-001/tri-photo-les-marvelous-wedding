@@ -616,18 +616,35 @@ async function fetchFullDatabase(): Promise<DBStructure> {
     const selectionsMap = new Map((selectionsData || []).map(s => [s.project_id, s]));
     const clientsList = (projectsData || []).map(proj => {
       const sel: any = selectionsMap.get(proj.id) || {};
+      const quotasObj = sel.target_category_quotas || {};
+
+      const formula = quotasObj.__formula || sel.formula || "";
+      const categoryLabels = quotasObj.__categoryLabels || sel.category_labels || { Dot: "Dot", Globale: "Classique", Album: "Album" };
+      const isLocked = quotasObj.__isLocked ?? sel.is_locked ?? false;
+      const coverPhotoId = quotasObj.__coverPhotoId ?? sel.cover_photo_id ?? null;
+      const deadline = quotasObj.__deadline ?? sel.deadline ?? null;
+      const photoComments = quotasObj.__photoComments ?? sel.photo_comments ?? {};
+
+      const cleanQuotas: Record<string, number> = {};
+      Object.keys(quotasObj).forEach(k => {
+        if (!k.startsWith('__')) {
+          cleanQuotas[k] = quotasObj[k];
+        }
+      });
+
       return {
         id: proj.id,
         name: proj.couple,
+        formula,
         targetCount: sel.target_count ?? 5,
-        targetCategoryQuotas: sel.target_category_quotas ?? {},
+        targetCategoryQuotas: cleanQuotas,
         selectedPhotoIds: sel.selected_photo_ids ?? [],
         dislikedPhotoIds: sel.disliked_photo_ids ?? [],
-        photoComments: sel.photo_comments ?? {},
-        isLocked: sel.is_locked ?? false,
-        coverPhotoId: sel.cover_photo_id ?? null,
-        deadline: sel.deadline ?? null,
-        categoryLabels: sel.category_labels ?? { Dot: "Dot", Globale: "Classique", Album: "Album" },
+        photoComments,
+        isLocked,
+        coverPhotoId,
+        deadline,
+        categoryLabels,
         notes: sel.notes ?? "",
         createdAt: proj.wedding_date || new Date().toISOString(),
         weddingDate: proj.wedding_date || null,
@@ -738,18 +755,25 @@ app.post("/api/clients", async (req, res) => {
         continue;
       }
 
+      // Pack metadata into target_category_quotas JSONB object
+      const rawQuotas = client.targetCategoryQuotas || {};
+      const targetCategoryQuotasWithMeta = {
+        ...rawQuotas,
+        __formula: client.formula || "",
+        __categoryLabels: client.categoryLabels || { Dot: "Dot", Globale: "Classique", Album: "Album" },
+        __isLocked: client.isLocked || false,
+        __coverPhotoId: client.coverPhotoId || null,
+        __deadline: client.deadline || null,
+        __photoComments: client.photoComments || {}
+      };
+
       // Then upsert to wedding_client_selections (child table)
       const { error: selError } = await supabase.from("wedding_client_selections").upsert({
         project_id: client.id,
         target_count: client.targetCount,
-        target_category_quotas: client.targetCategoryQuotas || {},
+        target_category_quotas: targetCategoryQuotasWithMeta,
         selected_photo_ids: client.selectedPhotoIds || [],
         disliked_photo_ids: client.dislikedPhotoIds || [],
-        photo_comments: client.photoComments || {},
-        is_locked: client.isLocked || false,
-        cover_photo_id: client.coverPhotoId || null,
-        deadline: client.deadline || null,
-        category_labels: client.categoryLabels || { Dot: "Dot", Globale: "Classique", Album: "Album" },
         notes: client.notes || "",
         updated_at: new Date().toISOString()
       }, { onConflict: "project_id" });
@@ -759,7 +783,7 @@ app.post("/api/clients", async (req, res) => {
       }
     }
 
-    res.json({ success: true });
+    res.json({ success: true, clientsList });
   } catch (err: any) {
     console.error("Sync clients error:", err);
     res.status(500).json({ error: err.message });
