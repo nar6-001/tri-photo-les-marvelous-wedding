@@ -890,23 +890,18 @@ export default function AdminView({
     if (inDb || inBatch) {
       const taskId = existingTaskId || `task-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
       if (existingTaskId) {
-        setBulkQueue(prev => prev.map(t => t.id === taskId ? { 
-          ...t, 
-          status: 'success', 
-          progress: 100, 
-          errorMsg: `Photo "${file.name}" déjà présente dans "${targetCat}" (ignorée)` 
-        } : t));
+        setBulkQueue(prev => prev.map(t => t.id === taskId ? { ...t, status: 'error', progress: 100, errorMsg: `La photo "${file.name}" a déjà été ajoutée à ce projet sous la catégorie "${targetCat}". Doublon ignoré.` } : t));
       } else {
         const newTask: UploadTask = {
           id: taskId,
           name: file.name,
           progress: 100,
-          status: 'success',
-          errorMsg: `Photo "${file.name}" déjà présente dans "${targetCat}" (ignorée)`
+          status: 'error',
+          errorMsg: `La photo "${file.name}" a déjà été ajoutée à ce projet sous la catégorie "${targetCat}". Doublon ignoré.`
         };
         setBulkQueue(prev => [newTask, ...prev]);
       }
-      return null;
+      throw new Error(`La photo "${file.name}" est un doublon et a été ignorée.`);
     }
 
     const taskId = existingTaskId || `task-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
@@ -1048,7 +1043,6 @@ export default function AdminView({
     const batchUploadedNames = new Set<string>();
     const uploadStartTime = Date.now();
     let totalPauseDuration = 0;
-    let skippedDuplicatesCount = 0;
 
     for (let i = 0; i < count; i++) {
       // Pause yield check loop
@@ -1081,8 +1075,6 @@ export default function AdminView({
               body: JSON.stringify({ globalPhotos: [photo] })
             }).catch(err => console.error("Incremental photo sync error:", err));
           }
-        } else {
-          skippedDuplicatesCount++;
         }
       } catch (err: any) {
         console.error("Single upload failed", err);
@@ -1106,8 +1098,6 @@ export default function AdminView({
       }
     }
 
-    const folderLabel = targetCategory || uploadCategory || 'ce dossier';
-
     if (newPhotos.length > 0) {
       const currentPhotos = getGlobalPhotos();
       const updated = [...newPhotos, ...currentPhotos];
@@ -1124,11 +1114,7 @@ export default function AdminView({
         });
         if (response.ok) {
           await loadDatabaseState();
-          const summaryMsg = skippedDuplicatesCount > 0
-            ? `${newPhotos.length} photo(s) ajoutée(s) dans "${folderLabel}". ${skippedDuplicatesCount} doublon(s) déjà présent(s) ignoré(s) automatiquement.`
-            : `${newPhotos.length} photo(s) ajoutée(s) avec succès dans le dossier "${folderLabel}" !`;
-          setUploadSuccess(summaryMsg);
-          toast.success(summaryMsg);
+          setUploadSuccess(`${newPhotos.length} photos importées avec succès !`);
         } else {
           const errText = await response.text();
           console.error("Failed to sync photos with server:", response.status, errText);
@@ -1138,10 +1124,6 @@ export default function AdminView({
         console.error("Batch sync exception", err);
         setUploadError("Une erreur réseau est survenue lors de la synchronisation.");
       }
-    } else if (skippedDuplicatesCount > 0) {
-      const summaryMsg = `${skippedDuplicatesCount} photo(s) sélectionnée(s) sont déjà présentes dans le dossier "${folderLabel}" (ignorées automatiquement).`;
-      setUploadSuccess(summaryMsg);
-      toast.info(summaryMsg);
     }
     
     setIsUploading(false);
@@ -2857,20 +2839,6 @@ export default function AdminView({
                                   </button>
                                   {tab !== 'A_TOUS' && (
                                     <div className="flex items-center">
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          setProjectUploadCategory(tab as CategoryTab);
-                                          setTimeout(() => {
-                                            projectFileInputRef.current?.click();
-                                          }, 100);
-                                        }}
-                                        title={`Ajouter des photos directement dans le dossier "${label}"`}
-                                        className="px-1.5 py-1 text-[9.5px] uppercase select-none cursor-pointer border border-l bg-emerald-50/90 text-emerald-700 border-brand-sand hover:bg-emerald-600 hover:text-white transition-all flex items-center justify-center gap-1 font-black"
-                                      >
-                                        <Upload className="w-3 h-3 text-emerald-600" />
-                                        <span className="hidden md:inline">Ajouter</span>
-                                      </button>
                                       <button
                                         type="button"
                                         onClick={openCategoryEditor}
