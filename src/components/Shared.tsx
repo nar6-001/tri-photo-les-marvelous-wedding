@@ -181,6 +181,12 @@ export function SmartImage({ src, alt, className = "", rounded = "rounded-md", f
   const [retryCount, setRetryCount] = useState(0);
   const [naturalRatio, setNaturalRatio] = useState<number | null>(null);
 
+  useEffect(() => {
+    setLoaded(false);
+    setFailed(false);
+    setRetryCount(0);
+  }, [src]);
+
   const handleRetry = useCallback(() => {
     setFailed(false);
     setLoaded(false);
@@ -192,28 +198,30 @@ export function SmartImage({ src, alt, className = "", rounded = "rounded-md", f
     ? (naturalRatio !== null && naturalRatio < 0.95 ? "cover" : "contain")
     : fit;
 
+  const finalSrc = retryCount > 0
+    ? `${src}${src.includes("?") ? "&" : "?"}retry=${retryCount}`
+    : src;
+
   return (
     <div className={`relative overflow-hidden ${rounded} bg-[var(--bg-subtle)] ${className}`}>
       {!loaded && !failed && <Skeleton className="absolute inset-0" />}
       {failed ? (
-        <div className="absolute inset-0 flex flex-col items-center justify-center text-brand-sage text-[10px] gap-1.5 p-2">
-          <span className="font-bold uppercase tracking-widest">Image indisponible</span>
+        <div className="absolute inset-0 flex flex-col items-center justify-center text-brand-sage text-[10px] gap-1.5 p-2 bg-brand-cream/40">
+          <span className="font-bold uppercase tracking-widest text-brand-olive">Image indisponible</span>
           <button
             type="button"
             onClick={handleRetry}
-            className="px-2.5 py-1 bg-brand-olive text-brand-cream text-[9px] font-bold rounded-full uppercase cursor-pointer"
+            className="px-3 py-1.5 bg-brand-olive text-brand-cream text-[10px] font-bold rounded-full uppercase cursor-pointer hover:bg-brand-moss active:scale-95 shadow-sm transition-all"
           >Réessayer</button>
         </div>
       ) : (
         <motion.img
-          initial={{ scale: 1.06, opacity: 0 }}
-          animate={{ scale: loaded ? 1 : 1.06, opacity: loaded ? 1 : 0 }}
-          transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
-          src={`${src}${src.includes("?") ? "&" : "?"}r=${retryCount}`}
+          key={`${src}-${retryCount}`}
+          initial={{ scale: 1.04, opacity: 0 }}
+          animate={{ scale: loaded ? 1 : 1.04, opacity: loaded ? 1 : 0 }}
+          transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+          src={finalSrc}
           alt={alt}
-          loading="lazy"
-          decoding="async"
-          referrerPolicy="no-referrer"
           onLoad={(e) => {
             setLoaded(true);
             const img = e.currentTarget;
@@ -221,7 +229,13 @@ export function SmartImage({ src, alt, className = "", rounded = "rounded-md", f
               setNaturalRatio(img.naturalWidth / img.naturalHeight);
             }
           }}
-          onError={() => setFailed(true)}
+          onError={() => {
+            if (retryCount === 0) {
+              setRetryCount(1);
+            } else {
+              setFailed(true);
+            }
+          }}
           className={`w-full h-full object-${effectiveFit} transition-transform duration-700 hover:scale-[1.03] active:scale-[1.05] ${loaded ? "opacity-100" : "opacity-0"}`}
           {...(rest as any)}
         />
