@@ -101,46 +101,6 @@ export default function App() {
   }, [clientsList, activeClientId]);
 
   const handleFinishSorting = () => {
-    const curr = getActiveClient();
-    if (!curr) return;
-
-    if (!curr.isLocked) {
-      const duration = calculateSortingDuration();
-      const now = new Date().toISOString();
-
-      const updatedClients = clientsList.map(c => {
-        if (c.id === curr.id) {
-          return {
-            ...c,
-            isLocked: true,
-            sortingEndTime: c.sortingEndTime || now,
-            sortingDurationFormatted: c.sortingDurationFormatted || duration
-          };
-        }
-        return c;
-      });
-
-      saveClients(updatedClients);
-      setClientsList(updatedClients);
-      setConfettiTrigger(Date.now());
-      sound.play("pop");
-
-      // Post system message in chat to notify photographer
-      const activeSel = globalPhotos.filter(p => curr.selectedPhotoIds.includes(p.id));
-      const finishMsg = `🎉 TRI PHOTO TERMINÉ PAR LE CLIENT (${curr.name}) !\n\nTotal sélectionné : ${activeSel.length} / ${curr.targetCount} photos.\nTemps de tri : ${duration}.\nStatut : Sélection validée et verrouillée.`;
-
-      fetch("/api/clients/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          clientId: curr.id,
-          message: finishMsg,
-          sender: "system"
-        })
-      }).catch(() => {});
-    }
-
-    // Open dedicated Espace de Fin view
     goToTab('Finish');
   };
 
@@ -1420,6 +1380,43 @@ export default function App() {
                         activeClient={activeClient}
                         globalPhotos={globalPhotos}
                         durationFormatted={calculateSortingDuration()}
+                        onConfirmFinish={() => {
+                          const curr = getActiveClient();
+                          if (!curr) return;
+                          const duration = calculateSortingDuration();
+                          const now = new Date().toISOString();
+
+                          const updatedClients = clientsList.map(c => {
+                            if (c.id === curr.id) {
+                              return {
+                                ...c,
+                                isLocked: true,
+                                sortingEndTime: c.sortingEndTime || now,
+                                sortingDurationFormatted: c.sortingDurationFormatted || duration
+                              };
+                            }
+                            return c;
+                          });
+
+                          saveClients(updatedClients);
+                          setClientsList(updatedClients);
+                          setConfettiTrigger(Date.now());
+                          sound.play("pop");
+
+                          // Post system message in chat to notify photographer
+                          const activeSel = globalPhotos.filter(p => curr.selectedPhotoIds.includes(p.id));
+                          const finishMsg = `🎉 TRI PHOTO TERMINÉ ET VALIDÉ PAR LE CLIENT (${curr.name}) !\n\nTotal sélectionné : ${activeSel.length} / ${curr.targetCount} photos.\nTemps de tri : ${duration}.\nStatut : Sélection validée et verrouillée.`;
+
+                          fetch("/api/clients/chat", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                              clientId: curr.id,
+                              message: finishMsg,
+                              sender: "system"
+                            })
+                          }).catch(() => {});
+                        }}
                         onOpenChat={() => goToTab('Chat')}
                         onOpenExplore={() => goToTab('Explore')}
                         onUnlockSelection={() => {

@@ -118,7 +118,7 @@ export default function SwipeCard({ profile, onSwipe, active, isTop = true, stac
               className="absolute bottom-48 left-1/2 -translate-x-1/2 z-40 pointer-events-none"
             >
               <div className="border-2 font-serif font-black text-xl tracking-widest px-4 py-1 rounded uppercase bg-white/95 shadow" style={{ borderColor: "var(--stamp-super, #A56B47)", color: "var(--stamp-super, #A56B47)" }}>
-                ★ COUP DE COEUR ★
+                ★ ALBUM ★
               </div>
             </motion.div>
           </>

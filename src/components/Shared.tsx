@@ -329,7 +329,7 @@ export function LikeToast({ photo, onDone }: { photo: { name: string; image: str
             <img src={photo.image} alt="" className="w-full h-full object-cover" />
           </div>
           <div className="flex flex-col leading-none">
-            <span className="text-[9px] font-extrabold tracking-widest uppercase text-brand-gold/90">Coup de coeur</span>
+            <span className="text-[9px] font-extrabold tracking-widest uppercase text-brand-gold/90">Sélection Album</span>
             <span className="text-[11px] font-bold truncate max-w-[160px]">{photo.name}</span>
           </div>
           <Check className="w-4 h-4 text-brand-gold ml-1" />

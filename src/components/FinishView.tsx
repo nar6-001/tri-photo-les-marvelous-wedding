@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { Clock, CheckCircle2, Heart, Sparkles, MessageSquare, Lock, Unlock, ArrowLeft, RefreshCw, FolderOpen, Images, Share2, Award, ExternalLink } from 'lucide-react';
+import { Clock, CheckCircle2, Heart, Sparkles, MessageSquare, Lock, Unlock, ArrowLeft, RefreshCw, FolderOpen, Images, Share2, Award, ExternalLink, Check } from 'lucide-react';
 import { ClientAccount, WeddingPhoto } from '../utils/weddingData';
 import { SmartImage } from './Shared';
 
@@ -8,6 +8,7 @@ interface FinishViewProps {
   activeClient: ClientAccount;
   globalPhotos: WeddingPhoto[];
   durationFormatted: string;
+  onConfirmFinish: () => void;
   onOpenChat: () => void;
   onOpenExplore: () => void;
   onUnlockSelection: () => void;
@@ -18,12 +19,15 @@ export default function FinishView({
   activeClient,
   globalPhotos,
   durationFormatted,
+  onConfirmFinish,
   onOpenChat,
   onOpenExplore,
   onUnlockSelection,
   onBackToSwipe
 }: FinishViewProps) {
   const [showUnlockConfirm, setShowUnlockConfirm] = useState(false);
+
+  const isLocked = Boolean(activeClient.isLocked);
 
   // Selected photos
   const selectedPhotos = globalPhotos.filter(p => activeClient.selectedPhotoIds.includes(p.id));
@@ -32,7 +36,6 @@ export default function FinishView({
   const choices = activeClient.photoChoices || {};
   const classiqueCount = selectedPhotos.filter(p => (choices[p.id] || 'Classique') === 'Classique').length;
   const albumCount = selectedPhotos.filter(p => choices[p.id] === 'Album').length;
-  const dotCount = selectedPhotos.filter(p => choices[p.id] === 'Dot').length;
 
   const targetTotal = activeClient.targetCount || 800;
   const targetAlbum = activeClient.targetCountAlbum || 130;
@@ -61,7 +64,7 @@ export default function FinishView({
           transition={{ type: "spring", damping: 14, stiffness: 200 }}
           className="w-16 h-16 sm:w-20 sm:h-20 bg-brand-gold/20 border-2 border-brand-gold rounded-full flex items-center justify-center mx-auto mb-3 text-brand-gold shadow-lg"
         >
-          <Award className="w-8 h-8 sm:w-10 sm:h-10 text-brand-gold animate-bounce" />
+          <Award className={`w-8 h-8 sm:w-10 sm:h-10 text-brand-gold ${isLocked ? 'animate-bounce' : ''}`} />
         </motion.div>
 
         <motion.span
@@ -69,7 +72,7 @@ export default function FinishView({
           animate={{ opacity: 1, y: 0 }}
           className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-brand-gold font-serif-display block mb-1"
         >
-          Espace de Fin de Tri
+          Espace de Validation du Tri
         </motion.span>
 
         <motion.h1
@@ -82,7 +85,9 @@ export default function FinishView({
         </motion.h1>
 
         <p className="text-xs sm:text-sm text-brand-cream/80 font-serif-display italic mt-1 max-w-md mx-auto">
-          Félicitations ! Votre sélection d'album est validée et prête pour le photographe.
+          {isLocked
+            ? "Félicitations ! Votre sélection d'album est validée et le photographe est informé."
+            : "Vérifiez votre sélection ci-dessous et confirmez la fin de votre tri photo."}
         </p>
       </div>
 
@@ -97,26 +102,40 @@ export default function FinishView({
         >
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-2xl bg-brand-gold/15 border border-brand-gold/30 text-brand-gold flex items-center justify-center shrink-0 shadow-inner">
-              <Clock className="w-6 h-6 text-brand-gold animate-spin-slow" />
+              <Clock className={`w-6 h-6 text-brand-gold ${!isLocked ? 'animate-spin-slow' : ''}`} />
             </div>
             <div>
               <span className="text-[9.5px] font-extrabold uppercase tracking-widest text-brand-sage block leading-none mb-1">
-                Chronomètre de tri
+                {isLocked ? "Temps total de tri (Chrono arrêté)" : "Temps de tri écoulé (Chrono en cours)"}
               </span>
               <h2 className="text-xl sm:text-2xl font-black text-brand-olive font-mono tabular-nums leading-tight">
-                {durationFormatted || activeClient.sortingDurationFormatted || "18 min 45 sec"}
+                {isLocked
+                  ? (activeClient.sortingDurationFormatted || durationFormatted)
+                  : durationFormatted}
               </h2>
-              <span className="text-[10px] text-emerald-700 font-bold flex items-center gap-1 mt-0.5">
-                <CheckCircle2 className="w-3 h-3 text-emerald-600 inline" /> Fin du chrono enregistrée
+              <span className={`text-[10px] font-bold flex items-center gap-1 mt-0.5 ${
+                isLocked ? 'text-emerald-700' : 'text-amber-700'
+              }`}>
+                {isLocked ? (
+                  <><CheckCircle2 className="w-3 h-3 text-emerald-600 inline" /> Fin du chrono enregistrée</>
+                ) : (
+                  <><Sparkles className="w-3 h-3 text-amber-600 inline animate-pulse" /> Chrono en cours de calcul...</>
+                )}
               </span>
             </div>
           </div>
 
-          <div className="bg-brand-cream border border-brand-sand px-3 py-1.5 rounded-xl text-center shrink-0 w-full sm:w-auto">
-            <span className="text-[9px] uppercase font-bold text-brand-sage block">Statut du dossier</span>
-            <span className="text-xs font-black text-emerald-700 uppercase tracking-wide flex items-center justify-center gap-1">
-              <Lock className="w-3.5 h-3.5 text-emerald-600" /> Sélection Verrouillée
-            </span>
+          <div className="bg-brand-cream border border-brand-sand px-3 py-2 rounded-xl text-center shrink-0 w-full sm:w-auto">
+            <span className="text-[9px] uppercase font-bold text-brand-sage block mb-0.5">Statut du dossier</span>
+            {isLocked ? (
+              <span className="text-xs font-black text-emerald-700 uppercase tracking-wide flex items-center justify-center gap-1">
+                <Lock className="w-3.5 h-3.5 text-emerald-600" /> Sélection Verrouillée
+              </span>
+            ) : (
+              <span className="text-xs font-black text-amber-700 uppercase tracking-wide flex items-center justify-center gap-1 animate-pulse">
+                <Clock className="w-3.5 h-3.5 text-amber-600" /> En cours de tri
+              </span>
+            )}
           </div>
         </motion.div>
 
@@ -144,7 +163,7 @@ export default function FinishView({
           {/* Progress bar */}
           <div className="space-y-1.5">
             <div className="flex justify-between text-[11px] font-bold text-brand-olive">
-              <span>Progression totale</span>
+              <span>Progression globale</span>
               <span className="text-brand-gold font-mono">{totalPercent}%</span>
             </div>
             <div className="h-2.5 w-full bg-brand-sand/40 rounded-full overflow-hidden p-0.5">
@@ -199,7 +218,7 @@ export default function FinishView({
           >
             <div className="flex items-center justify-between">
               <h3 className="text-xs font-serif-display font-bold text-brand-olive uppercase tracking-wide flex items-center gap-1.5">
-                <Images className="w-4 h-4 text-brand-gold" /> Aperçu de vos coup de coeur ({selectedPhotos.length})
+                <Images className="w-4 h-4 text-brand-gold" /> Aperçu de votre sélection ({selectedPhotos.length})
               </h3>
               <button
                 type="button"
@@ -224,41 +243,65 @@ export default function FinishView({
           </motion.div>
         )}
 
-        {/* CARD 4: ACTIONS & PROCHAINES ÉTAPES */}
+        {/* CARD 4: CONFIRMATION PRINCIPALE & ACTIONS */}
         <motion.div
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
           className="space-y-3 pt-2"
         >
-          <button
-            type="button"
-            onClick={onOpenChat}
-            className="w-full bg-brand-olive hover:bg-brand-moss text-brand-cream font-bold py-3.5 px-5 rounded-2xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 text-xs uppercase tracking-wider"
-          >
-            <MessageSquare className="w-4 h-4 text-brand-gold" />
-            <span>Envoyer un message au photographe</span>
-          </button>
+          {!isLocked ? (
+            <>
+              {/* BIG MAIN CONFIRMATION BUTTON */}
+              <button
+                type="button"
+                onClick={onConfirmFinish}
+                className="w-full bg-gradient-to-r from-emerald-700 via-brand-olive to-emerald-800 hover:from-emerald-800 hover:to-brand-moss text-white font-extrabold py-4 px-6 rounded-2xl shadow-xl transition-all cursor-pointer flex items-center justify-center gap-3 text-sm sm:text-base uppercase tracking-wider animate-pulse border border-emerald-500/40"
+              >
+                <CheckCircle2 className="w-6 h-6 text-emerald-300 shrink-0" />
+                <span>CONFIRMER ET VALIDER DÉFINITIVEMENT MON TRI</span>
+              </button>
 
-          <div className="flex gap-3">
-            <button
-              type="button"
-              onClick={onOpenExplore}
-              className="flex-1 bg-[var(--bg-panel)] hover:bg-brand-cream border border-brand-sand text-brand-olive font-extrabold py-3 px-4 rounded-xl text-[10.5px] uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5"
-            >
-              <Heart className="w-3.5 h-3.5 text-brand-gold" />
-              <span>Consulter ma sélection</span>
-            </button>
+              <button
+                type="button"
+                onClick={onBackToSwipe}
+                className="w-full bg-[var(--bg-panel)] hover:bg-brand-cream border border-brand-sand text-brand-olive font-extrabold py-3 px-4 rounded-xl text-xs uppercase tracking-wider transition-all cursor-pointer text-center block"
+              >
+                ← Continuer mon tri (Ajouter ou modifier des photos)
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={onOpenChat}
+                className="w-full bg-brand-olive hover:bg-brand-moss text-brand-cream font-bold py-3.5 px-5 rounded-2xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 text-xs uppercase tracking-wider"
+              >
+                <MessageSquare className="w-4 h-4 text-brand-gold" />
+                <span>Envoyer un message au photographe</span>
+              </button>
 
-            <button
-              type="button"
-              onClick={() => setShowUnlockConfirm(true)}
-              className="bg-transparent hover:bg-brand-cream border border-dashed border-brand-sand text-brand-sage hover:text-brand-olive font-extrabold py-3 px-4 rounded-xl text-[10.5px] uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5"
-            >
-              <Unlock className="w-3.5 h-3.5 text-brand-sage" />
-              <span>Modifier mon tri</span>
-            </button>
-          </div>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={onOpenExplore}
+                  className="flex-1 bg-[var(--bg-panel)] hover:bg-brand-cream border border-brand-sand text-brand-olive font-extrabold py-3 px-4 rounded-xl text-[10.5px] uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  <Heart className="w-3.5 h-3.5 text-brand-gold" />
+                  <span>Consulter ma sélection</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowUnlockConfirm(true)}
+                  className="bg-transparent hover:bg-brand-cream border border-dashed border-brand-sand text-brand-sage hover:text-brand-olive font-extrabold py-3 px-4 rounded-xl text-[10.5px] uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  <Unlock className="w-3.5 h-3.5 text-brand-sage" />
+                  <span>Modifier mon tri</span>
+                </button>
+              </div>
+            </>
+          )}
         </motion.div>
 
       </div>
