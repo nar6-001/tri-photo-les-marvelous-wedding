@@ -343,6 +343,9 @@ export default function App() {
             ? client.selectedPhotoIds
             : [...client.selectedPhotoIds, photoId];
 
+          const choiceType = dir === 'right' ? 'Album' : (dir === 'down' ? 'Dot' : 'Classique');
+          const updatedChoices = { ...(client.photoChoices || {}), [photoId]: choiceType };
+
           if (dir === 'right') {
             setLikedPhoto({ name: currentPhoto.name, image: currentPhoto.image });
             // Heart burst from Like button position
@@ -357,7 +360,8 @@ export default function App() {
           return {
             ...client,
             selectedPhotoIds: updatedLikes,
-            dislikedPhotoIds: client.dislikedPhotoIds.filter(id => id !== photoId)
+            dislikedPhotoIds: client.dislikedPhotoIds.filter(id => id !== photoId),
+            photoChoices: updatedChoices
           };
         } else {
           sound.play("nope");

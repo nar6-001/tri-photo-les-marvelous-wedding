@@ -37,7 +37,7 @@ export default function LikesView({
   onResetSelection
 }: LikesViewProps) {
   const { theme } = usePaletteTheme();
-  const [viewMode, setViewMode] = useState<'favorites' | 'all'>('favorites');
+  const [selectionTab, setSelectionTab] = useState<'all' | 'album' | 'classique'>('all');
   const [lightboxPhoto, setLightboxPhoto] = useState<WeddingPhoto | null>(null);
   const [editingPhotoId, setEditingPhotoId] = useState<string | null>(null);
   const [commentInputText, setCommentInputText] = useState('');
@@ -49,7 +49,22 @@ export default function LikesView({
     (!categoryFilter || categoryFilter === 'Tout' || photo.category === categoryFilter)
   );
 
-  const currentDisplayList = selectedPhotos;
+  const albumPhotos = selectedPhotos.filter(p => {
+    const choice = activeClient.photoChoices?.[p.id];
+    if (choice) return choice === 'Album';
+    return true; // if no choice recorded yet, included in album
+  });
+
+  const classiquePhotos = selectedPhotos.filter(p => {
+    const choice = activeClient.photoChoices?.[p.id];
+    return choice === 'Classique';
+  });
+
+  const currentDisplayList = selectionTab === 'album'
+    ? albumPhotos
+    : selectionTab === 'classique'
+    ? classiquePhotos
+    : selectedPhotos;
 
   const allCategoryPhotos = globalPhotos.filter(photo => {
     const isClientPhoto = !photo.clientId || photo.clientId === activeClient.id;
@@ -176,8 +191,42 @@ export default function LikesView({
 
         <div className="bg-brand-cream/90 border border-brand-sand/80 p-2.5 rounded-2xl max-w-lg mx-auto shadow-2xs my-1.5">
           <p className="text-xs sm:text-sm font-serif-display font-extrabold text-brand-olive leading-normal">
-            Voici tous vos clichés coups de cœur sélectionnés pour votre album de noces.
+            {selectionTab === 'all'
+              ? "Voici tous vos clichés sélectionnés (Album & Classiques)."
+              : selectionTab === 'album'
+              ? "Voici vos clichés retenus spécifiquement pour l'album imprimé (bouton A)."
+              : "Voici vos clichés retenus pour la retouche classique (bouton C)."}
           </p>
+        </div>
+
+        <div className="flex bg-brand-sand/35 border border-brand-sand/70 p-1 rounded-xl max-w-sm mx-auto w-full mt-1.5 font-sans shadow-2xs relative">
+          <button
+            type="button"
+            onClick={() => setSelectionTab('all')}
+            className={`flex-1 py-1.5 rounded-lg text-[9.5px] font-black uppercase tracking-wider transition-all cursor-pointer ${
+              selectionTab === 'all' ? 'bg-brand-olive text-white shadow-xs' : 'text-brand-sage hover:text-brand-olive'
+            }`}
+          >
+            ✨ Tous ({selectedPhotos.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setSelectionTab('album')}
+            className={`flex-1 py-1.5 rounded-lg text-[9.5px] font-black uppercase tracking-wider transition-all cursor-pointer ${
+              selectionTab === 'album' ? 'bg-brand-olive text-white shadow-xs' : 'text-brand-sage hover:text-brand-olive'
+            }`}
+          >
+            📖 Album ({albumPhotos.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setSelectionTab('classique')}
+            className={`flex-1 py-1.5 rounded-lg text-[9.5px] font-black uppercase tracking-wider transition-all cursor-pointer ${
+              selectionTab === 'classique' ? 'bg-brand-olive text-white shadow-xs' : 'text-brand-sage hover:text-brand-olive'
+            }`}
+          >
+            🎨 Classique ({classiquePhotos.length})
+          </button>
         </div>
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-1.5 mt-3 mb-1">

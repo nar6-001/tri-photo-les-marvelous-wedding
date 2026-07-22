@@ -103,9 +103,29 @@ export default function ZoomLightbox({
     }
   };
 
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (scale > 1) {
+      e.preventDefault();
+      setIsDragging(true);
+      dragStartRef.current = { x: e.clientX - position.x, y: e.clientY - position.y };
+    }
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (isDragging && scale > 1) {
+      e.preventDefault();
+      setPosition({
+        x: e.clientX - dragStartRef.current.x,
+        y: e.clientY - dragStartRef.current.y
+      });
+    }
+  };
+
+  const handleMouseUp = () => setIsDragging(false);
+
   const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault();
-    const delta = e.deltaY < 0 ? 0.12 : -0.12;
+    const delta = e.deltaY < 0 ? 0.15 : -0.15;
     setScale(s => {
       const next = clamp(s + delta, 1, 6);
       if (next === 1) setPosition({ x: 0, y: 0 });
@@ -116,8 +136,10 @@ export default function ZoomLightbox({
   const handleTouchStart = (e: React.TouchEvent) => {
     if (e.touches.length === 1) {
       const touch = e.touches[0];
-      lastTouchRef.current = { x: touch.clientX, y: touch.clientY };
       touchStartPosRef.current = { x: touch.clientX, y: touch.clientY };
+      dragStartRef.current = { x: touch.clientX - position.x, y: touch.clientY - position.y };
+      setIsDragging(true);
+
       if (scale <= 1) {
         const now = Date.now();
         if (now - lastTapRef.current < 280) {
@@ -126,7 +148,6 @@ export default function ZoomLightbox({
         }
         lastTapRef.current = now;
       }
-      setIsDragging(true);
     } else if (e.touches.length === 2) {
       const t1 = e.touches[0];
       const t2 = e.touches[1];
@@ -136,12 +157,12 @@ export default function ZoomLightbox({
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    if (e.touches.length === 1 && isDragging && scale > 1) {
+    if (e.touches.length === 1 && scale > 1 && isDragging) {
       const touch = e.touches[0];
-      const dx = touch.clientX - lastTouchRef.current.x;
-      const dy = touch.clientY - lastTouchRef.current.y;
-      setPosition(p => ({ x: p.x + dx, y: p.y + dy }));
-      lastTouchRef.current = { x: touch.clientX, y: touch.clientY };
+      setPosition({
+        x: touch.clientX - dragStartRef.current.x,
+        y: touch.clientY - dragStartRef.current.y
+      });
     } else if (e.touches.length === 2) {
       const t1 = e.touches[0];
       const t2 = e.touches[1];
@@ -159,6 +180,7 @@ export default function ZoomLightbox({
   };
 
   const handleTouchEnd = (e: React.TouchEvent) => {
+    setIsDragging(false);
     if (scale <= 1 && e.changedTouches.length === 1) {
       const touch = e.changedTouches[0];
       const dx = touch.clientX - touchStartPosRef.current.x;
@@ -173,11 +195,11 @@ export default function ZoomLightbox({
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
-      if (e.key === "ArrowLeft" && canGoPrev) handlePrev();
-      if (e.key === "ArrowRight" && canGoNext) handleNext();
       if (e.key === "+" || e.key === "=") handleZoomIn();
       if (e.key === "-") handleZoomOut();
       if (e.key === "0") handleReset();
+      if (e.key === "ArrowLeft" && canGoPrev) handlePrev();
+      if (e.key === "ArrowRight" && canGoNext) handleNext();
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
@@ -214,7 +236,14 @@ export default function ZoomLightbox({
 
       {/* Main Image Area */}
       <div
-        className="flex-1 w-full relative flex items-center justify-center overflow-hidden cursor-crosshair"
+        ref={containerRef}
+        className={`flex-1 w-full relative flex items-center justify-center overflow-hidden select-none ${
+          scale > 1 ? (isDragging ? 'cursor-grabbing' : 'cursor-grab') : 'cursor-crosshair'
+        }`}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
         onWheel={handleWheel}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
@@ -232,12 +261,21 @@ export default function ZoomLightbox({
         )}
 
         <motion.div
-          animate={{ scale }}
-          className="w-full h-full flex items-center justify-center"
+          key={photo.id}
+          animate={{ scale, x: position.x, y: position.y }}
+          transition={isDragging ? { duration: 0 } : { type: "spring", stiffness: 300, damping: 30 }}
+          className="w-full h-full flex items-center justify-center pointer-events-none"
           onDoubleClick={handleDoubleClick}
         >
-          <SmartImage src={photo.image} alt={photo.name} fit="contain" className="max-w-full max-h-full" />
+          <SmartImage src={photo.image} alt={photo.name} fit="contain" className="max-w-full max-h-full drop-shadow-2xl select-none" />
         </motion.div>
+
+        {scale > 1 && (
+          <div className="absolute top-4 left-4 bg-black/75 backdrop-blur-md px-3 py-1.5 rounded-full text-white font-mono text-[10px] tracking-wider flex items-center gap-2 pointer-events-none border border-white/10 shadow-lg">
+            <Move className="w-3.5 h-3.5 text-brand-gold animate-pulse" />
+            <span>Zoom {Math.round(scale * 100)}% · Glissez avec la souris ou le doigt</span>
+          </div>
+        )}
 
         <AnimatePresence>
           {showHelp && scale <= 1 && (

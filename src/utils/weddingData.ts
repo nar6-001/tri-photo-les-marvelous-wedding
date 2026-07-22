@@ -23,6 +23,7 @@ export interface ClientAccount {
   createdAt: string;
   isLocked?: boolean; // locked status for final physical printing
   photoComments?: Record<string, string>; // specific requests/comments per photo
+  photoChoices?: Record<string, string>; // swipe choice per photo ('Album' | 'Classique' | 'Dot')
   coverPhotoId?: string; // custom cover photo ID to personalize the experience
   weddingDate?: string; // date of wedding event
   country?: string; // country of wedding (France, Cameroun, etc.)
