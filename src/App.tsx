@@ -62,18 +62,20 @@ export default function App() {
   const [showTutorial, setShowTutorial] = useState(false);
 
   useEffect(() => {
-    if (activeClient && !isAdminMode) {
-      const tutorialKey = `hasSeenTutorial_${activeClient.id}`;
+    const currClient = clientsList.find(c => c.id === activeClientId) || clientsList[0];
+    if (currClient && !isAdminMode) {
+      const tutorialKey = `hasSeenTutorial_${currClient.id}`;
       const hasSeen = localStorage.getItem(tutorialKey);
       if (!hasSeen) {
         setShowTutorial(true);
       }
     }
-  }, [activeClientId, isAdminMode, activeClient]);
+  }, [activeClientId, isAdminMode, clientsList]);
 
   const handleCloseTutorial = () => {
-    if (activeClient) {
-      localStorage.setItem(`hasSeenTutorial_${activeClient.id}`, 'true');
+    const currClient = clientsList.find(c => c.id === activeClientId) || clientsList[0];
+    if (currClient) {
+      localStorage.setItem(`hasSeenTutorial_${currClient.id}`, 'true');
     }
     setShowTutorial(false);
   };
@@ -101,50 +103,42 @@ export default function App() {
   const handleFinishSorting = () => {
     const curr = getActiveClient();
     if (!curr) return;
-    if (curr.isLocked) {
-      goToTab('Finish');
-    } else {
-      setIsFinishModalOpen(true);
+
+    if (!curr.isLocked) {
+      const duration = calculateSortingDuration();
+      const now = new Date().toISOString();
+
+      const updatedClients = clientsList.map(c => {
+        if (c.id === curr.id) {
+          return {
+            ...c,
+            isLocked: true,
+            sortingEndTime: c.sortingEndTime || now,
+            sortingDurationFormatted: c.sortingDurationFormatted || duration
+          };
+        }
+        return c;
+      });
+
+      saveClients(updatedClients);
+      setClientsList(updatedClients);
+      setConfettiTrigger(Date.now());
+      sound.play("pop");
+
+      // Post system message in chat to notify photographer
+      const activeSel = globalPhotos.filter(p => curr.selectedPhotoIds.includes(p.id));
+      const finishMsg = `🎉 TRI PHOTO TERMINÉ PAR LE CLIENT (${curr.name}) !\n\nTotal sélectionné : ${activeSel.length} / ${curr.targetCount} photos.\nTemps de tri : ${duration}.\nStatut : Sélection validée et verrouillée.`;
+
+      fetch("/api/clients/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          clientId: curr.id,
+          message: finishMsg,
+          sender: "system"
+        })
+      }).catch(() => {});
     }
-  };
-
-  const handleConfirmFinishSorting = () => {
-    const curr = getActiveClient();
-    if (!curr) return;
-    const duration = calculateSortingDuration();
-    const now = new Date().toISOString();
-
-    const updatedClients = clientsList.map(c => {
-      if (c.id === curr.id) {
-        return {
-          ...c,
-          isLocked: true,
-          sortingEndTime: c.sortingEndTime || now,
-          sortingDurationFormatted: c.sortingDurationFormatted || duration
-        };
-      }
-      return c;
-    });
-
-    saveClients(updatedClients);
-    setClientsList(updatedClients);
-    setIsFinishModalOpen(false);
-    setConfettiTrigger(Date.now());
-    sound.play("pop");
-
-    // Post system message in chat to notify photographer
-    const activeSel = globalPhotos.filter(p => curr.selectedPhotoIds.includes(p.id));
-    const finishMsg = `🎉 TRI PHOTO TERMINÉ PAR LE CLIENT (${curr.name}) !\n\nTotal sélectionné : ${activeSel.length} / ${curr.targetCount} photos.\nTemps de tri : ${duration}.\nStatut : Sélection validée et verrouillée.`;
-
-    fetch("/api/clients/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        clientId: curr.id,
-        message: finishMsg,
-        sender: "system"
-      })
-    }).catch(() => {});
 
     // Open dedicated Espace de Fin view
     goToTab('Finish');
@@ -1586,16 +1580,6 @@ export default function App() {
             )}
           </div>
 
-        <ConfirmModal
-          open={isFinishModalOpen}
-          title="Signaler la fin de votre tri photo ?"
-          message={`Votre sélection actuelle contient ${selectedPhotos.length} photo(s) sur ${activeClient?.targetCount || 0}. En cliquant sur "Oui, Valider", votre tri sera définitivement verrouillé et le photographe sera immédiatement averti avec votre temps de tri.`}
-          confirmLabel="Oui, Valider mon tri"
-          cancelLabel="Continuer mon tri"
-          onConfirm={handleConfirmFinishSorting}
-          onClose={() => setIsFinishModalOpen(false)}
-        />
-
         {/* PASSCODE MODAL — iOS style keypad */}
         <AnimatePresence>
           {isPasscodeModalOpen && (
@@ -1673,6 +1657,7 @@ export default function App() {
             isOpen={showTutorial} 
             onClose={handleCloseTutorial} 
             clientName={activeClient.name} 
+            targetCount={activeClient.targetCount}
           />
         )}
       </div>

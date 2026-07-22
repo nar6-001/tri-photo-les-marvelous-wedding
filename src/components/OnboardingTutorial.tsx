@@ -7,9 +7,10 @@ interface OnboardingTutorialProps {
   isOpen: boolean;
   onClose: () => void;
   clientName: string;
+  targetCount: number;
 }
 
-export function OnboardingTutorial({ isOpen, onClose, clientName }: OnboardingTutorialProps) {
+export function OnboardingTutorial({ isOpen, onClose, clientName, targetCount }: OnboardingTutorialProps) {
   const { theme } = usePaletteTheme();
 
   return (
@@ -39,8 +40,8 @@ export function OnboardingTutorial({ isOpen, onClose, clientName }: OnboardingTu
                 {clientName}
               </h2>
               
-              <p className="text-brand-sage text-sm sm:text-base font-medium mb-8 leading-relaxed">
-                Voici comment créer l'album photo de vos rêves en toute simplicité.
+              <p className="text-brand-sage text-sm sm:text-base font-medium mb-8 leading-relaxed px-2">
+                Votre objectif : sélectionner vos <strong className="text-brand-olive font-black">{targetCount} clichés favoris</strong> pour créer l'album de vos rêves.
               </p>
 
               <div className="space-y-4 w-full text-left">
