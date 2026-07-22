@@ -890,11 +890,14 @@ export default function AdminView({
           }
         }
 
+        const rawFileName = file.name.replace(/\.[^/.]+$/, "");
+        const cleanBaseName = rawFileName.trim().replace(/[\s\/\\?#%&*:|"<>\.]/g, '_') || 'photo';
+        const cleanPublicId = `${cleanBaseName}_${Math.random().toString(36).substring(2, 7)}`;
+
         const formData = new FormData();
         formData.append('file', fileToUpload);
         formData.append('upload_preset', finalCloudinary.uploadPreset);
-        formData.append('use_filename', 'true');
-        formData.append('unique_filename', 'false');
+        formData.append('public_id', cleanPublicId);
 
         // Dynamically organize into Cloudinary folders mimicking the app structure
         let folderPath = "Mariages/Global";
@@ -6090,6 +6093,11 @@ export default function AdminView({
                   setEditableCategoryLabels(updatedLabels);
                   saveCategoryLabels(updatedLabels);
                   onUpdateCategoryLabels?.(updatedLabels);
+                  fetch("/api/categories", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ categoryLabels: updatedLabels })
+                  }).catch(() => {});
 
                   // 2. Update client quotas and client categoryLabels if specific client
                   const updatedClients = clients.map(c => {
@@ -6157,6 +6165,11 @@ export default function AdminView({
                   setEditableCategoryLabels(updatedLabels);
                   saveCategoryLabels(updatedLabels);
                   onUpdateCategoryLabels?.(updatedLabels);
+                  fetch("/api/categories", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ categoryLabels: updatedLabels })
+                  }).catch(() => {});
 
                   const updatedClients = clients.map(c => {
                     if (!clientId || c.id === clientId) {

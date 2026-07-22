@@ -681,6 +681,8 @@ interface DBStructure {
   cloudinarySettings?: { cloudName: string; uploadPreset: string };
 }
 
+let savedCategoryLabels: Record<string, string> | null = null;
+
 // Help initialize or read database from Supabase
 async function fetchFullDatabase(): Promise<DBStructure> {
   try {
@@ -788,7 +790,7 @@ async function fetchFullDatabase(): Promise<DBStructure> {
       globalPhotos,
       clientsList,
       chatMessages,
-      categoryLabels: { Dot: "Dot", Globale: "Classique", Album: "Album" },
+      categoryLabels: savedCategoryLabels || { Globale: "Classique", Album: "Album" },
       cloudinarySettings: {
         cloudName: CLOUDINARY_CLOUD_NAME,
         uploadPreset: CLOUDINARY_UPLOAD_PRESET
@@ -1049,7 +1051,7 @@ app.post("/api/photos", async (req, res) => {
 
   for (const photo of globalPhotos) {
     const { error } = await supabase.from("wedding_photos").upsert({
-      id: photo.id.length === 36 ? photo.id : undefined,
+      id: photo.id,
       project_id: photo.clientId || null,
       name: photo.name,
       image: photo.image,
@@ -1066,7 +1068,11 @@ app.get("/api/admin/logs", (req, res) => {
 });
 
 app.post("/api/categories", async (req, res) => {
-  res.json({ success: true });
+  const { categoryLabels } = req.body;
+  if (categoryLabels && typeof categoryLabels === "object") {
+    savedCategoryLabels = categoryLabels;
+  }
+  res.json({ success: true, categoryLabels: savedCategoryLabels });
 });
 
 app.post("/api/cloudinary-config", (req, res) => {
