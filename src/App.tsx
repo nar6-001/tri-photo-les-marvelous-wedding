@@ -791,30 +791,30 @@ export default function App() {
                       <div className="bg-[var(--bg-subtle)] border border-brand-sand/60 rounded-xl p-3 flex flex-col space-y-1.5 shadow-5xs">
                         <div className="flex justify-between items-center text-[10px] text-brand-olive font-extrabold">
                           <span>Sélection Album</span>
-                          <span className="text-brand-gold font-black tabular-nums">{activeClient.selectedPhotoIds.length} / {activeClient.targetCount}</span>
+                          <span className="text-brand-gold font-black tabular-nums">{selectedPhotos.length} / {activeClient.targetCount}</span>
                         </div>
                         <div className="h-1.5 w-full bg-brand-sand/35 rounded-full overflow-hidden">
                           <motion.div
                             className="h-full gradient-pan rounded-full"
                             initial={{ width: 0 }}
-                            animate={{ width: `${Math.min(100, (activeClient.selectedPhotoIds.length / activeClient.targetCount) * 100)}%` }}
+                            animate={{ width: `${Math.min(100, (selectedPhotos.length / activeClient.targetCount) * 100)}%` }}
                             transition={{ type: "spring", damping: 22, stiffness: 200 }}
                           />
                         </div>
                         <span className="text-[8.5px] text-brand-sage leading-normal font-serif-display italic">
-                          {activeClient.selectedPhotoIds.length >= activeClient.targetCount
+                          {selectedPhotos.length >= activeClient.targetCount
                             ? "🎉 Objectif album complété !"
-                            : `Encore ${activeClient.targetCount - activeClient.selectedPhotoIds.length} clichés à choisir.`}
+                            : `Encore ${activeClient.targetCount - selectedPhotos.length} clichés à choisir.`}
                         </span>
                       </div>
                     </div>
                   ) : (
                     <div
                       className="flex flex-col items-center justify-center p-2 rounded-xl bg-brand-cream/80 border border-brand-sand/60 text-brand-olive w-full"
-                      title={`Sélection: ${activeClient.selectedPhotoIds.length} / ${activeClient.targetCount}`}
+                      title={`Sélection: ${selectedPhotos.length} / ${activeClient.targetCount}`}
                     >
                       <Heart className="w-3.5 h-3.5 text-brand-gold fill-brand-gold/20 mb-0.5" />
-                      <span className="text-[10px] font-black tabular-nums">{activeClient.selectedPhotoIds.length}</span>
+                      <span className="text-[10px] font-black tabular-nums">{selectedPhotos.length}</span>
                       <span className="text-[8px] text-brand-sage">/ {activeClient.targetCount}</span>
                     </div>
                   )}
@@ -1010,10 +1010,32 @@ export default function App() {
                     >
                       <Mail className="w-4 h-4 text-brand-olive" />
                     </button>
-                    <div className="flex items-center gap-1.5 bg-brand-cream border border-brand-sand px-3 py-1 rounded-full text-brand-olive">
-                      <Heart className="w-3.5 h-3.5 text-brand-gold fill-brand-gold/10" />
-                      <span className="text-[11px] font-bold tracking-tight tabular-nums">{activeClient.selectedPhotoIds.length} / {activeClient.targetCount}</span>
-                    </div>
+                    {(() => {
+                      const selCount = selectedPhotos.length;
+                      const targetCount = activeClient.targetCount;
+                      const isOverQuota = targetCount > 0 && selCount > targetCount;
+                      const isExactQuota = targetCount > 0 && selCount === targetCount;
+                      return (
+                        <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full border transition-all ${
+                          isOverQuota
+                            ? 'bg-red-50 text-red-600 border-red-300 animate-pulse font-black shadow-sm'
+                            : isExactQuota
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-300 font-black shadow-xs'
+                            : 'bg-brand-cream border-brand-sand text-brand-olive'
+                        }`}>
+                          <Heart className={`w-3.5 h-3.5 ${
+                            isOverQuota
+                              ? 'text-red-500 fill-red-500/20'
+                              : isExactQuota
+                              ? 'text-emerald-600 fill-emerald-600/20'
+                              : 'text-brand-gold fill-brand-gold/10'
+                          }`} />
+                          <span className="text-[11px] font-bold tracking-tight tabular-nums">
+                            {selCount} / {targetCount}
+                          </span>
+                        </div>
+                      );
+                    })()}
                   </div>
                 </motion.div>
               )}
@@ -1177,9 +1199,9 @@ export default function App() {
                                   Album: activeClient ? (activeClient.targetCategoryQuotas?.['Album'] !== undefined ? activeClient.targetCategoryQuotas['Album'] : activeClient.targetCountAlbum) === -1 : false,
                                 }}
                                 categoryCounts={activeClient ? {
-                                  Dot: getActiveClientPhotos().filter(p => activeClient.selectedPhotoIds.includes(p.id) && (p.category === 'Dot' || p.category?.toLowerCase() === 'dot')).length,
-                                  Globale: getActiveClientPhotos().filter(p => activeClient.selectedPhotoIds.includes(p.id) && p.category?.toLowerCase() !== 'album' && p.category?.toLowerCase() !== 'dot').length,
-                                  Album: activeClient.selectedPhotoIds.length,
+                                  Dot: selectedPhotos.filter(p => activeClient.photoChoices?.[p.id] === 'Dot' || p.category === 'Dot').length,
+                                  Globale: selectedPhotos.filter(p => activeClient.photoChoices?.[p.id] === 'Classique' || (!activeClient.photoChoices?.[p.id] && p.category !== 'Album' && p.category !== 'Dot')).length,
+                                  Album: selectedPhotos.filter(p => activeClient.photoChoices?.[p.id] === 'Album' || (!activeClient.photoChoices?.[p.id] && p.category === 'Album')).length,
                                   Disliked: activeClient.dislikedPhotoIds.length,
                                 } : undefined}
                               />
@@ -1318,7 +1340,7 @@ export default function App() {
               <div className="h-[64px] bg-[var(--bg-panel)] border-t border-brand-sand flex items-center justify-around z-35 px-2 shrink-0 md:hidden safe-bottom relative">
                 {[
                   { tab: 'Swipe' as BottomNavTab, label: 'Tri-photos', Icon: Layers },
-                  { tab: 'Explore' as BottomNavTab, label: 'Ma Sélection', Icon: Heart, badge: activeClient?.selectedPhotoIds.length || 0 },
+                  { tab: 'Explore' as BottomNavTab, label: 'Ma Sélection', Icon: Heart, badge: selectedPhotos.length },
                   { tab: 'Chat' as BottomNavTab, label: 'Messagerie', Icon: Mail },
                   { tab: 'Profil' as BottomNavTab, label: 'Mon Profil', Icon: User }
                 ].map((item) => {

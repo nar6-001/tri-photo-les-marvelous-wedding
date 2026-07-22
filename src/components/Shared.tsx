@@ -205,7 +205,10 @@ export function SmartImage({ src, alt, className = "", rounded = "rounded-md", f
           >Réessayer</button>
         </div>
       ) : (
-        <img
+        <motion.img
+          initial={{ scale: 1.06, opacity: 0 }}
+          animate={{ scale: loaded ? 1 : 1.06, opacity: loaded ? 1 : 0 }}
+          transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
           src={`${src}${src.includes("?") ? "&" : "?"}r=${retryCount}`}
           alt={alt}
           loading="lazy"
@@ -219,8 +222,8 @@ export function SmartImage({ src, alt, className = "", rounded = "rounded-md", f
             }
           }}
           onError={() => setFailed(true)}
-          className={`w-full h-full ${effectiveFit === "cover" ? "object-cover" : "object-contain"} transition-opacity duration-500 ${loaded ? "opacity-100" : "opacity-0"}`}
-          {...rest}
+          className={`w-full h-full object-${effectiveFit} transition-transform duration-700 hover:scale-[1.03] active:scale-[1.05] ${loaded ? "opacity-100" : "opacity-0"}`}
+          {...(rest as any)}
         />
       )}
     </div>

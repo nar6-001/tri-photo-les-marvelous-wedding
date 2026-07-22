@@ -37,7 +37,7 @@ export default function LikesView({
   onResetSelection
 }: LikesViewProps) {
   const { theme } = usePaletteTheme();
-  const [selectionTab, setSelectionTab] = useState<'all' | 'album' | 'classique'>('all');
+  const [selectionTab, setSelectionTab] = useState<'classique' | 'album'>('classique');
   const [lightboxPhoto, setLightboxPhoto] = useState<WeddingPhoto | null>(null);
   const [editingPhotoId, setEditingPhotoId] = useState<string | null>(null);
   const [commentInputText, setCommentInputText] = useState('');
@@ -49,22 +49,19 @@ export default function LikesView({
     (!categoryFilter || categoryFilter === 'Tout' || photo.category === categoryFilter)
   );
 
+  const classiquePhotos = selectedPhotos.filter(p => {
+    const choice = activeClient.photoChoices?.[p.id];
+    if (choice) return choice === 'Classique';
+    return p.category !== 'Album'; // default to classique
+  });
+
   const albumPhotos = selectedPhotos.filter(p => {
     const choice = activeClient.photoChoices?.[p.id];
     if (choice) return choice === 'Album';
-    return true; // if no choice recorded yet, included in album
+    return p.category === 'Album';
   });
 
-  const classiquePhotos = selectedPhotos.filter(p => {
-    const choice = activeClient.photoChoices?.[p.id];
-    return choice === 'Classique';
-  });
-
-  const currentDisplayList = selectionTab === 'album'
-    ? albumPhotos
-    : selectionTab === 'classique'
-    ? classiquePhotos
-    : selectedPhotos;
+  const currentDisplayList = selectionTab === 'classique' ? classiquePhotos : albumPhotos;
 
   const allCategoryPhotos = globalPhotos.filter(photo => {
     const isClientPhoto = !photo.clientId || photo.clientId === activeClient.id;
@@ -182,52 +179,57 @@ export default function LikesView({
           <span className="text-[9px] font-extrabold tracking-widest px-3 py-1 rounded-full uppercase border bg-[var(--bg-panel)] border-brand-sand text-brand-olive shadow-xs font-mono">
             Présentes : {allCategoryPhotos.length} photos
           </span>
-          <span className={`text-[9px] font-extrabold tracking-widest px-3 py-1 rounded-full uppercase border tabular-nums ${
-            totalCount >= target ? 'bg-[#E3EAE0] text-[#3c5035] border-[#cad7c4] shadow-xs' : 'bg-[var(--bg-panel)] border-brand-sand text-brand-sage'
-          }`}>
-            Total Sélection : {animatedTotal} / {animatedTarget}
-          </span>
+          {(() => {
+            const isOverQuota = target > 0 && totalCount > target;
+            const isExactQuota = target > 0 && totalCount === target;
+            return (
+              <span className={`text-[9px] font-extrabold tracking-widest px-3 py-1 rounded-full uppercase border tabular-nums transition-all ${
+                isOverQuota
+                  ? 'bg-red-100 text-red-700 border-red-400 animate-pulse font-black shadow-sm'
+                  : isExactQuota
+                  ? 'bg-[#E3EAE0] text-[#3c5035] border-[#cad7c4] font-black shadow-xs'
+                  : 'bg-[var(--bg-panel)] border-brand-sand text-brand-sage'
+              }`}>
+                Total Sélection : {animatedTotal} / {animatedTarget} {isOverQuota ? '⚠️ (Dépassement !)' : ''}
+              </span>
+            );
+          })()}
         </div>
 
-        <div className="bg-brand-cream/90 border border-brand-sand/80 p-2.5 rounded-2xl max-w-lg mx-auto shadow-2xs my-1.5">
-          <p className="text-xs sm:text-sm font-serif-display font-extrabold text-brand-olive leading-normal">
-            {selectionTab === 'all'
-              ? "Voici tous vos clichés sélectionnés (Album & Classiques)."
-              : selectionTab === 'album'
-              ? "Voici vos clichés retenus spécifiquement pour l'album imprimé (bouton A)."
-              : "Voici vos clichés retenus pour la retouche classique (bouton C)."}
-          </p>
-        </div>
+        {target > 0 && totalCount > target && (
+          <div className="bg-red-50 border border-red-300 text-red-700 p-3 rounded-2xl max-w-lg mx-auto text-[11px] font-extrabold flex items-center justify-center gap-2 animate-pulse shadow-sm my-1">
+            <span>⚠️ <strong>Dépassement de quota !</strong> Vous avez {totalCount} photos (objectif: {target}). Veuillez en retirer {totalCount - target} pour finaliser votre album.</span>
+          </div>
+        )}
 
-        <div className="flex bg-brand-sand/35 border border-brand-sand/70 p-1 rounded-xl max-w-sm mx-auto w-full mt-1.5 font-sans shadow-2xs relative">
-          <button
-            type="button"
-            onClick={() => setSelectionTab('all')}
-            className={`flex-1 py-1.5 rounded-lg text-[9.5px] font-black uppercase tracking-wider transition-all cursor-pointer ${
-              selectionTab === 'all' ? 'bg-brand-olive text-white shadow-xs' : 'text-brand-sage hover:text-brand-olive'
-            }`}
-          >
-            ✨ Tous ({selectedPhotos.length})
-          </button>
-          <button
-            type="button"
-            onClick={() => setSelectionTab('album')}
-            className={`flex-1 py-1.5 rounded-lg text-[9.5px] font-black uppercase tracking-wider transition-all cursor-pointer ${
-              selectionTab === 'album' ? 'bg-brand-olive text-white shadow-xs' : 'text-brand-sage hover:text-brand-olive'
-            }`}
-          >
-            📖 Album ({albumPhotos.length})
-          </button>
-          <button
-            type="button"
-            onClick={() => setSelectionTab('classique')}
-            className={`flex-1 py-1.5 rounded-lg text-[9.5px] font-black uppercase tracking-wider transition-all cursor-pointer ${
-              selectionTab === 'classique' ? 'bg-brand-olive text-white shadow-xs' : 'text-brand-sage hover:text-brand-olive'
-            }`}
-          >
-            🎨 Classique ({classiquePhotos.length})
-          </button>
-        </div>
+
+
+        {(() => {
+          const classiqueTarget = getClientQuotaForCategory('Classique') || getClientQuotaForCategory('Globale') || activeClient.targetCount || 0;
+          const albumTarget = getClientQuotaForCategory('Album') || activeClient.targetCountAlbum || 0;
+          return (
+            <div className="flex bg-brand-sand/35 border border-brand-sand/70 p-1 rounded-xl max-w-sm mx-auto w-full mt-1.5 font-sans shadow-2xs relative">
+              <button
+                type="button"
+                onClick={() => setSelectionTab('classique')}
+                className={`flex-1 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
+                  selectionTab === 'classique' ? 'bg-brand-olive text-white shadow-xs' : 'text-brand-sage hover:text-brand-olive'
+                }`}
+              >
+                🎨 Classique ({classiquePhotos.length}{classiqueTarget > 0 ? `/${classiqueTarget}` : ''})
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectionTab('album')}
+                className={`flex-1 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
+                  selectionTab === 'album' ? 'bg-brand-olive text-white shadow-xs' : 'text-brand-sage hover:text-brand-olive'
+                }`}
+              >
+                📖 Album ({albumPhotos.length}{albumTarget > 0 ? `/${albumTarget}` : ''})
+              </button>
+            </div>
+          );
+        })()}
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-1.5 mt-3 mb-1">
           <span className="text-[9px] uppercase tracking-wider font-extrabold text-brand-sage">

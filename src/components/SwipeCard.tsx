@@ -136,17 +136,17 @@ export default function SwipeCard({ profile, onSwipe, active, isTop = true, stac
           <AnimatePresence mode="wait">
             <motion.div
               key={currentImageIndex}
-              initial={{ opacity: 0, x: 30 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -30 }}
-              transition={{ duration: 0.25 }}
-              className="absolute inset-0 flex items-center justify-center"
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 1.03 }}
+              transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+              className="absolute inset-0 flex items-center justify-center overflow-hidden"
             >
               <SmartImage
                 src={profile.images[currentImageIndex]}
                 alt={profile.name}
                 fit="smart"
-                className="w-full h-full max-w-full max-h-full select-none pointer-events-none"
+                className="w-full h-full max-w-full max-h-full select-none pointer-events-none transition-transform duration-700 hover:scale-105"
               />
             </motion.div>
           </AnimatePresence>
