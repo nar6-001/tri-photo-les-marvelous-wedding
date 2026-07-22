@@ -8,6 +8,11 @@ interface ActionButtonsProps {
   canUndo: boolean;
   onCommentClick: () => void;
   disabled?: boolean;
+  disabledCategories?: {
+    Dot?: boolean;
+    Globale?: boolean;
+    Album?: boolean;
+  };
 }
 
 function MagneticButton({ children, onClick, className, style, title, disabled, ariaLabel }: {
@@ -74,7 +79,7 @@ function MagneticButton({ children, onClick, className, style, title, disabled, 
   );
 }
 
-export default function ActionButtons({ onSwipe, onUndo, canUndo, onCommentClick, disabled }: ActionButtonsProps) {
+export default function ActionButtons({ onSwipe, onUndo, canUndo, onCommentClick, disabled, disabledCategories }: ActionButtonsProps) {
   return (
     <div className="flex items-center justify-center gap-3 w-full px-2 sm:px-4 select-none shrink-0 py-4 bg-transparent mt-1 z-30">
       <div className="flex flex-col items-center gap-1.5">
@@ -105,53 +110,59 @@ export default function ActionButtons({ onSwipe, onUndo, canUndo, onCommentClick
         <span className="text-[8px] font-extrabold uppercase text-red-400 tracking-wider md:hidden">Écarter</span>
       </div>
 
-      <div className="flex flex-col items-center gap-1.5">
-        <MagneticButton
-          onClick={() => onSwipe('down')}
-          disabled={disabled}
-          ariaLabel="Sélection Dot"
-          className="w-11 h-11 flex items-center justify-center rounded-full hover:brightness-95 border-2 shadow-md duration-300 cursor-pointer"
-          style={{ background: "#E8A87C", borderColor: "#C9744E", color: "#5C2E0E" }}
-          title="Sélection Dot"
-        >
-          <span className="font-serif-display font-black text-[20px] leading-none">D</span>
-        </MagneticButton>
-        <span className="text-[8px] font-extrabold uppercase text-[#C9744E] tracking-wider md:hidden">Dot</span>
-      </div>
-
-      <div className="flex flex-col items-center gap-1.5">
-        <MagneticButton
-          onClick={() => onSwipe('up')}
-          disabled={disabled}
-          ariaLabel="Retouche classique"
-          className="w-11 h-11 flex items-center justify-center rounded-full hover:brightness-95 border-2 shadow-md duration-300 cursor-pointer"
-          style={{ background: "#C5D9B5", borderColor: "#8FAF7B", color: "#2D4A1F" }}
-          title="Retouche classique"
-        >
-          <span className="font-serif-display font-black text-[20px] leading-none">C</span>
-        </MagneticButton>
-        <span className="text-[8px] font-extrabold uppercase text-[#8FAF7B] tracking-wider md:hidden">Classique</span>
-      </div>
-
-      <div className="flex flex-col items-center gap-1.5">
-        <motion.div
-          animate={disabled ? {} : { scale: [1, 1.04, 1] }}
-          transition={disabled ? {} : { duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
-          className={disabled ? "opacity-50" : ""}
-        >
+      {!disabledCategories?.Dot && (
+        <div className="flex flex-col items-center gap-1.5">
           <MagneticButton
-            onClick={() => onSwipe('right')}
+            onClick={() => onSwipe('down')}
             disabled={disabled}
-            ariaLabel="Ajouter à l'album"
-            className="w-14 h-14 flex items-center justify-center rounded-full hover:brightness-110 border-2 border-white/60 shadow-lg duration-300 cursor-pointer halo-pulse"
-            style={{ background: "#2E2E2E", color: "#FDFBF8" }}
-            title="Ajouter à l'album"
+            ariaLabel="Sélection Dot"
+            className="w-11 h-11 flex items-center justify-center rounded-full hover:brightness-95 border-2 shadow-md duration-300 cursor-pointer"
+            style={{ background: "#E8A87C", borderColor: "#C9744E", color: "#5C2E0E" }}
+            title="Sélection Dot"
           >
-            <span className="font-serif-display font-black text-[26px] leading-none">A</span>
+            <span className="font-serif-display font-black text-[20px] leading-none">D</span>
           </MagneticButton>
-        </motion.div>
-        <span className="text-[8px] font-extrabold uppercase text-brand-olive tracking-wider md:hidden">Album</span>
-      </div>
+          <span className="text-[8px] font-extrabold uppercase text-[#C9744E] tracking-wider md:hidden">Dot</span>
+        </div>
+      )}
+
+      {!disabledCategories?.Globale && (
+        <div className="flex flex-col items-center gap-1.5">
+          <MagneticButton
+            onClick={() => onSwipe('up')}
+            disabled={disabled}
+            ariaLabel="Retouche classique"
+            className="w-11 h-11 flex items-center justify-center rounded-full hover:brightness-95 border-2 shadow-md duration-300 cursor-pointer"
+            style={{ background: "#C5D9B5", borderColor: "#8FAF7B", color: "#2D4A1F" }}
+            title="Retouche classique"
+          >
+            <span className="font-serif-display font-black text-[20px] leading-none">C</span>
+          </MagneticButton>
+          <span className="text-[8px] font-extrabold uppercase text-[#8FAF7B] tracking-wider md:hidden">Classique</span>
+        </div>
+      )}
+
+      {!disabledCategories?.Album && (
+        <div className="flex flex-col items-center gap-1.5">
+          <motion.div
+            animate={disabled ? {} : { scale: [1, 1.04, 1] }}
+            transition={disabled ? {} : { duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
+            className={disabled ? "opacity-50" : ""}
+          >
+            <MagneticButton
+              onClick={() => onSwipe('right')}
+              disabled={disabled}
+              ariaLabel="Ajouter à l'album"
+              className="w-14 h-14 flex items-center justify-center rounded-full hover:brightness-110 border-2 border-white/60 shadow-lg duration-300 cursor-pointer halo-pulse"
+              style={{ background: "#2E2E2E", color: "#FDFBF8" }}
+              title="Ajouter à l'album"
+            >
+              <span className="font-serif-display font-black text-[26px] leading-none">A</span>
+            </MagneticButton>
+          </motion.div>
+          <span className="text-[8px] font-extrabold uppercase text-brand-olive tracking-wider md:hidden">Album</span>
+        </div>
+      )}
 
       <div className="flex flex-col items-center gap-1.5">
         <MagneticButton

@@ -1170,6 +1170,11 @@ export default function App() {
                                 canUndo={activeClient ? activeClient.selectedPhotoIds.length > 0 || activeClient.dislikedPhotoIds.length > 0 : false}
                                 onCommentClick={() => { setIsCommentModalOpen(true); setCommentText(''); setCommentSuccess(false); }}
                                 disabled={activeClient?.isLocked}
+                                disabledCategories={{
+                                  Dot: activeClient ? (activeClient.targetCategoryQuotas?.['Dot'] !== undefined ? activeClient.targetCategoryQuotas['Dot'] : activeClient.targetCountDot) === -1 : false,
+                                  Globale: activeClient ? (activeClient.targetCategoryQuotas?.['Globale'] !== undefined ? activeClient.targetCategoryQuotas['Globale'] : activeClient.targetCountGlobale) === -1 : false,
+                                  Album: activeClient ? (activeClient.targetCategoryQuotas?.['Album'] !== undefined ? activeClient.targetCategoryQuotas['Album'] : activeClient.targetCountAlbum) === -1 : false,
+                                }}
                               />
                             </div>
                           </div>

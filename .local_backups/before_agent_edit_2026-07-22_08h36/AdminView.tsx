@@ -2801,7 +2801,10 @@ export default function AdminView({
                           
                           {/* Inner tab filter to filter the grid in space */}
                           <div className="flex gap-1 overflow-x-auto pb-1 border-b border-brand-sand/35 scrollbar-none">
-                            {(['A_TOUS', ...Object.keys(currentCategoryLabels)] as const).map(tab => {
+                            {(['A_TOUS', ...Object.keys(currentCategoryLabels).filter(catKey => {
+                              // Montrer uniquement les dossiers qui contiennent au moins 1 photo
+                              return clientPhotos.some(p => p.category === catKey);
+                            })] as const).map(tab => {
                               const tabPhotosCount = tab === 'A_TOUS' 
                                 ? clientPhotos.length 
                                 : clientPhotos.filter(p => p.category === tab).length;
