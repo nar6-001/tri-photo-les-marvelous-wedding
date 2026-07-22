@@ -5,7 +5,8 @@ import {
   Check, AlertCircle, RefreshCw, Key, HelpCircle, ArrowLeft, Bookmark,
   MessageSquare, Lock, Unlock, Link as LinkIcon, Filter, Camera, FileImage,
   FolderOpen, Send, Copy, Search, Calendar, Globe, X, ZoomIn, Clock, ChevronLeft, ChevronRight,
-  Command, Pin, Bell, Eye, EyeOff, Hash, MoreVertical, Sparkles, Tag, Star, Edit2, Archive, Terminal, Share2
+  Command, Pin, Bell, Eye, EyeOff, Hash, MoreVertical, Sparkles, Tag, Star, Edit2, Archive, Terminal, Share2,
+  QrCode, ExternalLink, Download, Edit3, Save
 } from 'lucide-react';
 import ZoomLightbox from './ZoomLightbox';
 import { SmartImage, ConfirmModal } from './Shared';
@@ -221,6 +222,87 @@ export default function AdminView({
   // Custom client access share modal state
   const [shareModalClient, setShareModalClient] = useState<ClientAccount | null>(null);
   const [customShareMessage, setCustomShareMessage] = useState<string>('');
+  const [shareSlugInput, setShareSlugInput] = useState<string>('');
+  const [isEditingSlug, setIsEditingSlug] = useState<boolean>(false);
+  const [activeShareTemplate, setActiveShareTemplate] = useState<'welcome' | 'reminder' | 'done'>('welcome');
+  const [showQrCode, setShowQrCode] = useState<boolean>(false);
+
+  const generateTemplateMessage = (client: ClientAccount, template: 'welcome' | 'reminder' | 'done', slug: string) => {
+    const link = `${window.location.origin}${window.location.pathname}?client=${slug}`;
+    if (template === 'reminder') {
+      const deadlineText = client.deadline ? ` avant le ${new Date(client.deadline).toLocaleDateString('fr-FR')}` : '';
+      return `Bonjour ${client.name} 👋,\n\nUn petit rappel amical pour votre sélection de photos ! N'oubliez pas de choisir vos ${client.targetCount} clichés préférés pour votre album${deadlineText} :\n\n👉 ${link}\n\nSi vous avez la moindre question, nous sommes à votre entière disposition.\n\nÀ très vite,\nMaison Marvel`;
+    }
+    if (template === 'done') {
+      return `Bonjour ${client.name} ✨,\n\nNous avons bien reçu la validation de votre sélection d'album (${client.targetCount} photos) ! L'impression de vos clichés d'exception est en cours.\n\nVous pouvez ré-afficher votre sélection validée à tout moment ici :\n👉 ${link}\n\nUn grand merci pour votre confiance !\nMaison Marvel`;
+    }
+    return `Bonjour ${client.name} 💒,\n\nVotre galerie photo est prête ! Découvrez et choisissez vos clichés préférés en ouvrant votre espace privé dédié :\n\n👉 ${link}\n\nNombre de clichés à choisir : ${client.targetCount} photos\n\nÀ très vite,\nMaison Marvel`;
+  };
+
+  const handleSaveShareSlug = (rawNewSlug: string) => {
+    if (!shareModalClient) return;
+    const cleanSlug = rawNewSlug.trim().toLowerCase().replace(/[\s\/\\?#%&*:|"<>\.]/g, '-');
+    if (!cleanSlug) {
+      toast.error("Le nom du lien ne peut pas être vide.");
+      return;
+    }
+
+    if (cleanSlug === shareModalClient.id) {
+      setIsEditingSlug(false);
+      return;
+    }
+
+    if (clients.some(c => c.id === cleanSlug && c.id !== shareModalClient.id)) {
+      toast.error("Cet identifiant de lien est déjà utilisé par un autre couple.");
+      return;
+    }
+
+    const oldId = shareModalClient.id;
+    const updatedClients = clients.map(c => c.id === oldId ? { ...c, id: cleanSlug } : c);
+    setClients(updatedClients);
+    saveClients(updatedClients);
+
+    const updatedPhotos = photos.map(p => p.clientId === oldId ? { ...p, clientId: cleanSlug } : p);
+    setPhotos(updatedPhotos);
+    saveGlobalPhotos(updatedPhotos);
+
+    fetch("/api/clients", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ clientsList: updatedClients })
+    }).catch(() => {});
+
+    fetch("/api/photos", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ globalPhotos: updatedPhotos })
+    }).catch(() => {});
+
+    const updatedClient = { ...shareModalClient, id: cleanSlug };
+    setShareModalClient(updatedClient);
+    setShareSlugInput(cleanSlug);
+    setIsEditingSlug(false);
+    setCustomShareMessage(generateTemplateMessage(updatedClient, activeShareTemplate, cleanSlug));
+    toast.success(`Identifiant du lien mis à jour : ?client=${cleanSlug}`);
+  };
+
+  const handleDownloadQrCode = async (clientName: string, qrUrl: string) => {
+    try {
+      const response = await fetch(qrUrl);
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = `QRCode-Mariage-${clientName.replace(/\s+/g, '_')}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(blobUrl);
+      toast.success("QR Code téléchargé !");
+    } catch {
+      toast.error("Impossible de télécharger le QR Code.");
+    }
+  };
 
   useEffect(() => {
     setDetailGalleryLimit(48);
@@ -6400,120 +6482,251 @@ export default function AdminView({
       )}
 
       {/* SHARE ACCESS MODAL */}
-      {shareModalClient && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/65 backdrop-blur-md p-4 animate-fade-in" onClick={() => setShareModalClient(null)}>
-          <motion.div
-            initial={{ scale: 0.94, opacity: 0, y: 15 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0.94, opacity: 0, y: 15 }}
-            className="bg-white border border-brand-sand/80 rounded-3xl p-6 w-full max-w-lg shadow-2xl text-left space-y-5"
-            onClick={e => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div className="flex items-start justify-between border-b border-brand-sand/40 pb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl bg-brand-cream border border-brand-sand text-brand-gold flex items-center justify-center shrink-0 shadow-xs">
-                  <Share2 className="w-6 h-6" />
+      {shareModalClient && (() => {
+        const currentSlug = shareModalClient.id;
+        const fullLinkUrl = `${window.location.origin}${window.location.pathname}?client=${currentSlug}`;
+        const qrCodeImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=10&data=${encodeURIComponent(fullLinkUrl)}`;
+        const effectiveMessage = customShareMessage || generateTemplateMessage(shareModalClient, activeShareTemplate, currentSlug);
+
+        return (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/65 backdrop-blur-md p-4 animate-fade-in" onClick={() => setShareModalClient(null)}>
+            <motion.div
+              initial={{ scale: 0.94, opacity: 0, y: 15 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.94, opacity: 0, y: 15 }}
+              className="bg-white border border-brand-sand/80 rounded-3xl p-6 w-full max-w-xl shadow-2xl text-left space-y-4 max-h-[90vh] overflow-y-auto no-scrollbar"
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="flex items-start justify-between border-b border-brand-sand/40 pb-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-2xl bg-brand-cream border border-brand-sand text-brand-gold flex items-center justify-center shrink-0 shadow-xs">
+                    <Share2 className="w-5.5 h-5.5 text-brand-gold" />
+                  </div>
+                  <div>
+                    <h3 className="font-serif-display font-bold text-brand-olive text-lg leading-snug">
+                      Partager l'accès client
+                    </h3>
+                    <p className="text-[11px] text-brand-sage font-medium mt-0.5">
+                      Couple : <span className="font-bold text-brand-olive">{shareModalClient.name}</span>
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="font-serif-display font-bold text-brand-olive text-lg leading-snug">
-                    Partager l'accès client
-                  </h3>
-                  <p className="text-xs text-brand-sage font-medium mt-0.5">
-                    Couple : <span className="font-bold text-brand-olive">{shareModalClient.name}</span>
-                  </p>
+                <button
+                  type="button"
+                  onClick={() => setShareModalClient(null)}
+                  className="text-brand-sand hover:text-brand-olive p-1 rounded-lg transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Direct Link & Customizer Section */}
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <label className="text-[10.5px] font-extrabold uppercase tracking-wider text-brand-sage flex items-center gap-1.5">
+                    <LinkIcon className="w-3.5 h-3.5 text-brand-gold" /> Lien personnalisé du couple :
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!isEditingSlug) {
+                        setShareSlugInput(shareModalClient.id);
+                        setIsEditingSlug(true);
+                      } else {
+                        handleSaveShareSlug(shareSlugInput);
+                      }
+                    }}
+                    className="text-[10px] font-extrabold uppercase text-brand-gold hover:text-brand-olive flex items-center gap-1 cursor-pointer transition-colors"
+                  >
+                    {isEditingSlug ? (
+                      <>
+                        <Save className="w-3 h-3 text-emerald-600" />
+                        <span className="text-emerald-700">Enregistrer</span>
+                      </>
+                    ) : (
+                      <>
+                        <Edit3 className="w-3 h-3" />
+                        <span>Personnaliser le lien</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {isEditingSlug ? (
+                  <div className="flex items-center gap-2 bg-amber-50/70 border-2 border-brand-gold/60 rounded-xl p-2 shadow-xs">
+                    <span className="text-[10.5px] font-mono text-brand-sage shrink-0 font-bold hidden sm:inline">{window.location.origin}/?client=</span>
+                    <input
+                      type="text"
+                      value={shareSlugInput}
+                      onChange={(e) => setShareSlugInput(e.target.value)}
+                      placeholder="ex: coraly-et-fidele-2026"
+                      className="w-full bg-white border border-brand-sand/70 rounded-lg px-2 py-1 text-xs font-mono font-bold text-brand-olive focus:outline-none focus:border-brand-gold"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleSaveShareSlug(shareSlugInput)}
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1 rounded-lg text-xs font-bold shrink-0 transition-colors flex items-center gap-1 cursor-pointer shadow-xs"
+                    >
+                      <Save className="w-3 h-3" />
+                      <span>Valider</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 bg-stone-50 border border-brand-sand rounded-xl p-2">
+                    <input
+                      type="text"
+                      readOnly
+                      value={fullLinkUrl}
+                      className="w-full bg-transparent text-xs font-mono text-brand-olive focus:outline-none select-all font-semibold"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(fullLinkUrl);
+                        toast.success("Lien copié dans le presse-papier !");
+                      }}
+                      className="bg-brand-cream hover:bg-brand-sand text-brand-olive border border-brand-sand px-3 py-1.5 rounded-lg text-xs font-bold shrink-0 transition-colors flex items-center gap-1 cursor-pointer shadow-2xs"
+                    >
+                      <Copy className="w-3.5 h-3.5 text-brand-gold" />
+                      <span>Copier</span>
+                    </button>
+                  </div>
+                )}
+
+                {/* Quick Toolbar: Test Link & QR Code toggle */}
+                <div className="flex items-center justify-between pt-1 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => window.open(fullLinkUrl, '_blank')}
+                    className="text-[10.5px] font-extrabold uppercase text-brand-olive hover:text-brand-gold flex items-center gap-1.5 cursor-pointer bg-brand-cream/80 hover:bg-brand-cream border border-brand-sand/50 px-2.5 py-1 rounded-lg transition-all"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5 text-brand-gold" />
+                    <span>Tester la galerie client (Aperçu)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowQrCode(!showQrCode)}
+                    className={`text-[10.5px] font-extrabold uppercase flex items-center gap-1.5 cursor-pointer border px-2.5 py-1 rounded-lg transition-all ${
+                      showQrCode ? 'bg-brand-olive text-brand-cream border-brand-olive' : 'bg-stone-50 hover:bg-stone-100 text-brand-olive border-brand-sand'
+                    }`}
+                  >
+                    <QrCode className="w-3.5 h-3.5" />
+                    <span>{showQrCode ? 'Masquer QR Code' : 'Voir QR Code'}</span>
+                  </button>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setShareModalClient(null)}
-                className="text-brand-sand hover:text-brand-olive p-1 rounded-lg transition-colors cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
 
-            {/* Direct Link Display */}
-            <div className="space-y-2">
-              <label className="text-[11px] font-extrabold uppercase tracking-wider text-brand-sage block">
-                🔗 Lien direct du couple :
-              </label>
-              <div className="flex items-center gap-2 bg-stone-50 border border-brand-sand rounded-xl p-2.5">
-                <input
-                  type="text"
-                  readOnly
-                  value={`${window.location.origin}${window.location.pathname}?client=${shareModalClient.id}`}
-                  className="w-full bg-transparent text-xs font-mono text-brand-olive focus:outline-none select-all font-semibold"
+              {/* QR Code Collapsible Display */}
+              {showQrCode && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="bg-brand-cream/60 border border-brand-sand rounded-2xl p-4 flex flex-col items-center justify-center gap-3 text-center"
+                >
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-brand-sage">
+                    QR Code d'accès direct pour {shareModalClient.name}
+                  </span>
+                  <div className="p-2 bg-white rounded-xl border border-brand-sand/60 shadow-sm">
+                    <img 
+                      src={qrCodeImageUrl} 
+                      alt={`QR Code ${shareModalClient.name}`} 
+                      className="w-40 h-40 object-contain rounded"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleDownloadQrCode(shareModalClient.name, qrCodeImageUrl)}
+                    className="bg-brand-olive hover:bg-brand-moss text-brand-cream px-4 py-1.5 rounded-xl text-xs font-bold flex items-center gap-2 shadow-xs cursor-pointer transition-all"
+                  >
+                    <Download className="w-3.5 h-3.5 text-brand-gold" />
+                    <span>Télécharger l'image du QR Code</span>
+                  </button>
+                </motion.div>
+              )}
+
+              {/* Message Templates & Custom Invitation Message */}
+              <div className="space-y-2 pt-2 border-t border-brand-sand/30">
+                <div className="flex justify-between items-center">
+                  <label className="text-[10.5px] font-extrabold uppercase tracking-wider text-brand-sage block">
+                    💬 Modèle de message :
+                  </label>
+                  <div className="flex gap-1">
+                    {[
+                      { id: 'welcome', label: '📩 Envoi initial' },
+                      { id: 'reminder', label: '⏰ Relance' },
+                      { id: 'done', label: '✨ Validation' }
+                    ].map(tmpl => (
+                      <button
+                        key={tmpl.id}
+                        type="button"
+                        onClick={() => {
+                          const tKey = tmpl.id as 'welcome' | 'reminder' | 'done';
+                          setActiveShareTemplate(tKey);
+                          setCustomShareMessage(generateTemplateMessage(shareModalClient, tKey, currentSlug));
+                        }}
+                        className={`px-2 py-0.5 rounded text-[9.5px] font-extrabold uppercase transition-all cursor-pointer ${
+                          activeShareTemplate === tmpl.id
+                            ? 'bg-brand-gold text-brand-cream shadow-2xs'
+                            : 'bg-brand-cream/80 text-brand-sage hover:text-brand-olive border border-brand-sand/50'
+                        }`}
+                      >
+                        {tmpl.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <textarea
+                  rows={5}
+                  value={effectiveMessage}
+                  onChange={(e) => setCustomShareMessage(e.target.value)}
+                  className="w-full p-3 rounded-xl border border-brand-sand bg-amber-50/40 text-brand-olive text-xs font-sans focus:outline-none focus:border-brand-gold leading-relaxed font-medium"
                 />
+              </div>
+
+              {/* Action Buttons: WhatsApp, Email, Copy */}
+              <div className="pt-2 border-t border-brand-sand/40 flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  {/* WhatsApp Share */}
+                  <a
+                    href={`https://api.whatsapp.com/send?text=${encodeURIComponent(effectiveMessage)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-xl text-xs font-extrabold flex items-center gap-1.5 transition-colors shadow-xs"
+                  >
+                    <MessageSquare className="w-4 h-4 fill-white" />
+                    <span>WhatsApp</span>
+                  </a>
+
+                  {/* Email Share */}
+                  <a
+                    href={`mailto:?subject=${encodeURIComponent(`Vos photos de mariage — ${shareModalClient.name}`)}&body=${encodeURIComponent(effectiveMessage)}`}
+                    className="bg-sky-600 hover:bg-sky-700 text-white px-3.5 py-2 rounded-xl text-xs font-extrabold flex items-center gap-1.5 transition-colors shadow-xs"
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                    <span>Email</span>
+                  </a>
+                </div>
+
                 <button
                   type="button"
                   onClick={() => {
-                    const link = `${window.location.origin}${window.location.pathname}?client=${shareModalClient.id}`;
-                    navigator.clipboard.writeText(link);
-                    toast.success("Lien copié dans le presse-papier !");
+                    navigator.clipboard.writeText(effectiveMessage);
+                    toast.success("Message d'invitation copié !");
                   }}
-                  className="bg-brand-olive hover:bg-brand-gold text-brand-cream px-3.5 py-1.5 rounded-lg text-xs font-bold shrink-0 transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
+                  className="bg-brand-olive hover:bg-brand-gold text-brand-cream px-4 py-2 rounded-xl text-xs font-extrabold flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
                 >
-                  <Copy className="w-3.5 h-3.5" />
-                  <span>Copier</span>
+                  <Copy className="w-4 h-4" />
+                  <span>Copier le message</span>
                 </button>
               </div>
-              <p className="text-[10.5px] text-brand-sage leading-normal">
-                💡 Pour modifier l'identifiant du lien (ex: <code>?client=coraly-et-fidele</code>), cliquez sur le bouton <strong>« ÉDITER »</strong> dans la fiche du couple.
-              </p>
-            </div>
-
-            {/* Custom Invitation Message */}
-            <div className="space-y-2 pt-2 border-t border-brand-sand/30">
-              <label className="text-[11px] font-extrabold uppercase tracking-wider text-brand-sage block">
-                💬 Message d'invitation prêt à l'envoi :
-              </label>
-              <textarea
-                rows={5}
-                value={customShareMessage || `Bonjour ${shareModalClient.name} 💒,\n\nVotre galerie photo est prête ! Découvrez et choisissez vos clichés préférés en ouvrant votre espace privé dédié :\n\n👉 ${window.location.origin}${window.location.pathname}?client=${shareModalClient.id}\n\nNombre de clichés à choisir : ${shareModalClient.targetCount} photos\n\nÀ très vite,\nMaison Marvel`}
-                onChange={(e) => setCustomShareMessage(e.target.value)}
-                className="w-full p-3 rounded-xl border border-brand-sand bg-amber-50/40 text-brand-olive text-xs font-sans focus:outline-none focus:border-brand-gold leading-relaxed font-medium"
-              />
-            </div>
-
-            {/* Action Buttons */}
-            <div className="pt-3 border-t border-brand-sand/40 flex flex-wrap items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                {/* WhatsApp Share */}
-                <a
-                  href={`https://api.whatsapp.com/send?text=${encodeURIComponent(customShareMessage || `Bonjour ${shareModalClient.name} 💒,\n\nVotre galerie photo est prête ! Découvrez et choisissez vos clichés préférés en ouvrant votre espace privé dédié :\n\n👉 ${window.location.origin}${window.location.pathname}?client=${shareModalClient.id}\n\nNombre de clichés à choisir : ${shareModalClient.targetCount} photos\n\nÀ très vite,\nMaison Marvel`)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-colors shadow-xs"
-                >
-                  <span>WhatsApp</span>
-                </a>
-
-                {/* Email Share */}
-                <a
-                  href={`mailto:?subject=${encodeURIComponent(`Vos photos de mariage — ${shareModalClient.name}`)}&body=${encodeURIComponent(customShareMessage || `Bonjour ${shareModalClient.name} 💒,\n\nVotre galerie photo est prête ! Découvrez et choisissez vos clichés préférés en ouvrant votre espace privé dédié :\n\n👉 ${window.location.origin}${window.location.pathname}?client=${shareModalClient.id}\n\nNombre de clichés à choisir : ${shareModalClient.targetCount} photos\n\nÀ très vite,\nMaison Marvel`)}`}
-                  className="bg-sky-600 hover:bg-sky-700 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-colors shadow-xs"
-                >
-                  <span>Email</span>
-                </a>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => {
-                  const msg = customShareMessage || `Bonjour ${shareModalClient.name} 💒,\n\nVotre galerie photo est prête ! Découvrez et choisissez vos clichés préférés en ouvrant votre espace privé dédié :\n\n👉 ${window.location.origin}${window.location.pathname}?client=${shareModalClient.id}\n\nNombre de clichés à choisir : ${shareModalClient.targetCount} photos\n\nÀ très vite,\nMaison Marvel`;
-                  navigator.clipboard.writeText(msg);
-                  toast.success("Message complet copié !");
-                }}
-                className="bg-brand-olive hover:bg-brand-gold text-brand-cream px-4 py-2 rounded-xl text-xs font-extrabold flex items-center gap-2 transition-colors cursor-pointer shadow-xs"
-              >
-                <Copy className="w-4 h-4" />
-                <span>Copier le message</span>
-              </button>
-            </div>
-          </motion.div>
-        </div>
-      )}
+            </motion.div>
+          </div>
+        );
+      })()}
 
       <ConfirmModal
         open={!!confirmDeleteProjectId}

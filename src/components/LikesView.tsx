@@ -48,6 +48,10 @@ export default function LikesView({
     activeClient.selectedPhotoIds.includes(photo.id) &&
     (!categoryFilter || categoryFilter === 'Tout' || photo.category === categoryFilter)
   );
+
+  const classiquePhotos = selectedPhotos.filter(photo => photo.category?.toLowerCase() !== 'album');
+  const albumPhotos = selectedPhotos.filter(photo => photo.category?.toLowerCase() === 'album');
+
   const allCategoryPhotos = globalPhotos.filter(photo => {
     const isClientPhoto = !photo.clientId || photo.clientId === activeClient.id;
     const isCurrentCategory = !categoryFilter || categoryFilter === 'Tout' || photo.category === categoryFilter;
@@ -93,17 +97,19 @@ export default function LikesView({
     else await new Promise(r => setTimeout(r, 800));
   });
 
-  let viewTitle = "Ma Sélection";
-  let emptyMessage = "Votre livre est vide";
-  let emptyDescription = "Commencez à parcourir la liste \"Tout\" pour désigner vos clichés favoris !";
+  const currentDisplayList = viewMode === 'favorites' ? classiquePhotos : albumPhotos;
+
+  let viewTitle = viewMode === 'favorites' ? "Sélection · Classiques" : "Sélection · Album";
+  let emptyMessage = viewMode === 'favorites' ? "Aucun cliché Classique sélectionné" : "Aucun cliché Album sélectionné";
+  let emptyDescription = viewMode === 'favorites' 
+    ? "Glissez à droite les photos lors du tri pour constituer votre sélection Classique." 
+    : "Sélectionnez des photos dans la catégorie Album pour constituer votre livre photo imprimé.";
   let categoryHeadline = "";
 
   if (categoryFilter && categoryFilter !== 'Tout') {
     const label = categoryLabels[categoryFilter] || categoryFilter;
-    viewTitle = "Sélection · " + label.toUpperCase();
+    viewTitle = `Sélection (${viewMode === 'favorites' ? 'Classiques' : 'Album'}) · ` + label.toUpperCase();
     categoryHeadline = `Série ${label}`;
-    emptyMessage = `Aucun cliché ${label} sélectionné`;
-    emptyDescription = `Glissez à droite les photos de la session ${label} pour les voir s'afficher ici.`;
   }
 
   const handleSaveComment = (photoId: string) => {
@@ -161,7 +167,7 @@ export default function LikesView({
 
         <div className="flex justify-center gap-1.5 flex-wrap">
           <span className="text-[9px] font-extrabold tracking-widest px-3 py-1 rounded-full uppercase border bg-brand-olive text-brand-cream border-brand-moss shadow-sm tabular-nums">
-            {selectedPhotos.length} {selectedPhotos.length > 1 ? 'Clichés' : 'Cliché'}
+            {currentDisplayList.length} {currentDisplayList.length > 1 ? 'Clichés' : 'Cliché'}
           </span>
           <span className="text-[9px] font-extrabold tracking-widest px-3 py-1 rounded-full uppercase border bg-[var(--bg-panel)] border-brand-sand text-brand-olive shadow-xs font-mono">
             Présentes : {allCategoryPhotos.length} photos
@@ -173,11 +179,13 @@ export default function LikesView({
           </span>
         </div>
 
-        <p className="text-xs text-brand-sage leading-relaxed font-serif-display italic max-w-sm mx-auto">
-          {categoryFilter
-            ? "Retrouvez ci-dessous vos moments favoris retenus ou parcourez tous les clichés mis à disposition."
-            : `Voici vos coups de cœur. Seules les photos présentes ici feront partie de votre bel album de mariage de ${target} pages !`}
-        </p>
+        <div className="bg-brand-cream/90 border border-brand-sand/80 p-3 rounded-2xl max-w-lg mx-auto shadow-2xs my-2">
+          <p className="text-sm font-serif-display font-extrabold text-brand-olive leading-normal">
+            {viewMode === 'favorites'
+              ? "Voici vos coups de cœur retenus pour la sélection classique."
+              : "Voici vos clichés sélectionnés pour l'album physique d'exception."}
+          </p>
+        </div>
 
         <div className="flex bg-brand-sand/35 border border-brand-sand p-1 rounded-xl max-w-xs mx-auto w-full mt-2 font-sans shadow-2xs relative">
           <motion.div
@@ -186,10 +194,10 @@ export default function LikesView({
             transition={{ type: "spring", damping: 22, stiffness: 240 }}
           />
           <button type="button" onClick={() => setViewMode('favorites')} className={`flex-1 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-colors relative z-10 cursor-pointer ${viewMode === 'favorites' ? 'text-white' : 'text-brand-sage hover:text-brand-olive'}`}>
-            Ma Sélection ({selectedPhotos.length})
+            Classiques ({classiquePhotos.length})
           </button>
           <button type="button" onClick={() => setViewMode('all')} className={`flex-1 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-colors relative z-10 cursor-pointer ${viewMode === 'all' ? 'text-white' : 'text-brand-sage hover:text-brand-olive'}`}>
-            Tous les clichés ({allCategoryPhotos.length})
+            Album ({albumPhotos.length})
           </button>
         </div>
 
@@ -278,7 +286,7 @@ export default function LikesView({
       </motion.div>
 
       <div className="flex-1 py-4">
-        {(viewMode === 'favorites' ? selectedPhotos.length : allCategoryPhotos.length) === 0 ? (
+        {currentDisplayList.length === 0 ? (
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -292,9 +300,9 @@ export default function LikesView({
               <ImageIcon className="w-7 h-7 text-brand-sage" />
             </motion.div>
             <div className="space-y-1 animate-fade-in">
-              <p className="text-sm font-serif-display font-bold text-brand-olive">{viewMode === 'favorites' ? emptyMessage : "Galerie vide"}</p>
+              <p className="text-sm font-serif-display font-bold text-brand-olive">{emptyMessage}</p>
               <p className="text-[10.5px] text-brand-sage max-w-[210px] leading-normal mx-auto font-serif-display italic">
-                {viewMode === 'favorites' ? emptyDescription : "Aucune photo n'est actuellement présente pour cette série."}
+                {emptyDescription}
               </p>
             </div>
           </motion.div>
@@ -305,7 +313,7 @@ export default function LikesView({
             'list': "flex flex-col gap-4 pb-6"
           }[layout]}>
             <AnimatePresence>
-              {(viewMode === 'favorites' ? selectedPhotos : allCategoryPhotos).map((photo, idx) => {
+              {currentDisplayList.map((photo, idx) => {
                 const photoComment = activeClient.photoComments?.[photo.id] || '';
                 const isEditing = editingPhotoId === photo.id;
                 const isFavorite = activeClient.selectedPhotoIds.includes(photo.id);
@@ -337,15 +345,14 @@ export default function LikesView({
       {lightboxPhoto && (
         <ZoomLightbox
           photo={lightboxPhoto}
-          photos={viewMode === 'favorites' ? selectedPhotos : allCategoryPhotos}
+          photos={currentDisplayList}
           currentIndex={
             lightboxPhoto
-              ? (viewMode === 'favorites' ? selectedPhotos : allCategoryPhotos).findIndex(p => p.id === lightboxPhoto.id)
+              ? currentDisplayList.findIndex(p => p.id === lightboxPhoto.id)
               : 0
           }
           onNavigate={(newIdx) => {
-            const list = viewMode === 'favorites' ? selectedPhotos : allCategoryPhotos;
-            if (list[newIdx]) setLightboxPhoto(list[newIdx]);
+            if (currentDisplayList[newIdx]) setLightboxPhoto(currentDisplayList[newIdx]);
           }}
           onClose={() => setLightboxPhoto(null)}
           isLocked={isLocked}
@@ -430,9 +437,9 @@ function PolaroidCard({
         transition={{ delay: Math.min(index * 0.03, 0.3), type: "spring", damping: 20, stiffness: 220 }}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
-        className="group relative bg-[var(--bg-panel)] rounded-xl p-3 shadow-md border border-brand-sand/65 flex flex-row gap-4 text-left"
+        className="group relative bg-[var(--bg-panel)] rounded-xl p-2.5 sm:p-3 shadow-md border border-brand-sand/65 flex flex-col sm:flex-row gap-3 sm:gap-4 text-left min-w-0 overflow-hidden"
       >
-        <div onClick={onZoom} className="w-28 sm:w-36 aspect-[4/5] rounded-lg bg-[#141612] overflow-hidden relative flex items-center justify-center shrink-0 cursor-pointer group/img">
+        <div onClick={onZoom} className="w-full sm:w-36 max-h-[240px] sm:max-h-none aspect-[4/5] rounded-lg bg-[#141612] overflow-hidden relative flex items-center justify-center shrink-0 cursor-pointer group/img">
           <SmartImage src={photo.image} alt={photo.name} fit="contain" className="duration-500 group-hover:scale-[1.03]" />
           <div className="absolute top-1.5 right-1.5 flex gap-1 z-15">
             <button type="button" onClick={(e) => { e.stopPropagation(); onZoom(); }} aria-label="Agrandir"

@@ -79,7 +79,7 @@ export default function ProfileView({ activeClient, onEnterAdmin, onOpenChat, ph
           </span>
         </div>
         <div className="pt-2">
-          <h2 className="text-2xl font-serif-display font-bold text-brand-olive">{activeClient.name}</h2>
+          <h2 className="text-4xl sm:text-5xl font-serif-display font-black text-brand-olive uppercase tracking-tight">{activeClient.name}</h2>
           <p className="text-[10px] text-brand-sage uppercase font-bold tracking-widest mt-0.5">Tri Collaboratif</p>
         </div>
       </motion.div>

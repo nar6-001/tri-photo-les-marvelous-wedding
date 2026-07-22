@@ -782,7 +782,7 @@ export default function App() {
                   {!isClientSidebarCollapsed ? (
                     <div className="py-1 flex flex-col text-left space-y-1.5 w-full">
                       <span className="text-[8.5px] font-extrabold uppercase text-brand-sage tracking-wider">Espace Couple</span>
-                      <p className="text-xs font-serif-display font-black text-brand-olive uppercase tracking-tight">{activeClient.name}</p>
+                      <p className="text-lg sm:text-xl xl:text-2xl font-serif-display font-black text-brand-olive uppercase tracking-tight leading-tight my-1.5 break-words">{activeClient.name}</p>
 
                       <div className="bg-[var(--bg-subtle)] border border-brand-sand/60 rounded-xl p-3 flex flex-col space-y-1.5 shadow-5xs">
                         <div className="flex justify-between items-center text-[10px] text-brand-olive font-extrabold">
@@ -823,7 +823,7 @@ export default function App() {
 
                     {[
                       { tab: 'Swipe' as BottomNavTab, label: 'Tri-photos', Icon: Layers },
-                      { tab: 'Explore' as BottomNavTab, label: 'Ma Sélection', Icon: Heart, badge: activeClient?.selectedPhotoIds.length || 0 },
+                      { tab: 'Explore' as BottomNavTab, label: 'Ma Sélection', Icon: Heart, badge: globalPhotos.filter(p => activeClient?.selectedPhotoIds?.includes(p.id)).length },
                       { tab: 'Chat' as BottomNavTab, label: 'Messagerie', Icon: Mail },
                       { tab: 'Profil' as BottomNavTab, label: 'Mon Profil', Icon: User }
                     ].map((item) => {
@@ -976,9 +976,9 @@ export default function App() {
                 <motion.div
                   initial={{ y: -10, opacity: 0 }}
                   animate={{ y: 0, opacity: 1 }}
-                  className="h-14 shrink-0 bg-[var(--bg-panel)] border-b border-brand-sand px-4 flex items-center justify-between z-44 sticky top-0 shadow-sm md:hidden"
+                  className="min-h-[56px] py-1.5 shrink-0 bg-[var(--bg-panel)] border-b border-brand-sand px-3 sm:px-4 flex items-center justify-between z-44 sticky top-0 shadow-sm md:hidden gap-2"
                 >
-                  <div className="flex flex-col items-start text-left">
+                  <div className="flex flex-col items-start text-left min-w-0 flex-1">
                     <button
                       type="button"
                       onClick={() => {
@@ -991,7 +991,7 @@ export default function App() {
                       <span>Album de Noces</span>
                       {isAdminAuthorized ? <Unlock className="w-2.5 h-2.5 text-emerald-650" /> : <Key className="w-2.5 h-2.5 opacity-65 text-brand-gold" />}
                     </button>
-                    <span className="text-xs font-serif-display font-semibold text-brand-olive mt-0.5">{activeClient.name}</span>
+                    <span className="text-base sm:text-lg font-serif-display font-black text-brand-olive mt-0.5 leading-snug truncate max-w-full">{activeClient.name}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <button
