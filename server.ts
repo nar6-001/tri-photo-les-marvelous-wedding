@@ -56,7 +56,7 @@ dotenv.config({ path: ".env.local", override: true });
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 
 export const app = express();
-const PORT = process.env.PORT || 3005;
+const PORT = process.env.PORT || 3001;
 
 app.use(express.json({ limit: "100mb" }));
 app.use(express.urlencoded({ limit: "100mb", extended: true }));

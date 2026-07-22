@@ -846,6 +846,7 @@ export default function App() {
                               if (item.tab === 'Swipe') {
                                 setActiveCategory('Tout');
                               }
+                              setIsClientSidebarCollapsed(true);
                             }}
                             title={isClientSidebarCollapsed ? item.label : undefined}
                             className={`flex items-center justify-between rounded-xl text-left text-[11px] font-extrabold uppercase tracking-wide transition-all cursor-pointer outline-none border-none relative ${
@@ -885,6 +886,7 @@ export default function App() {
                                 onClick={() => {
                                   goToTab('Swipe');
                                   setActiveCategory('Tout');
+                                  setIsClientSidebarCollapsed(true);
                                 }}
                                 className={`w-full flex items-center justify-between px-2 py-1 rounded-md text-[10px] font-bold text-left transition-all cursor-pointer ${
                                   activeTab === 'Swipe' && activeCategory === 'Tout'
@@ -914,6 +916,7 @@ export default function App() {
                                     onClick={() => {
                                       goToTab('Swipe');
                                       setActiveCategory(catKey);
+                                      setIsClientSidebarCollapsed(true);
                                     }}
                                     className={`w-full flex items-center justify-between px-2 py-1 rounded-md text-[10px] font-bold text-left transition-all cursor-pointer ${
                                       isSelected

@@ -1079,7 +1079,7 @@ export default function AdminView({
         const resData = await response.json();
         if (resData && resData.secure_url) {
           const newPhoto: WeddingPhoto = {
-            id: `photo-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+            id: crypto.randomUUID(),
             name: file.name.split('.')[0] || 'Nouvelle photo',
             image: resData.secure_url,
             category: targetCategory || uploadCategory,
