@@ -9,6 +9,7 @@ import {
   QrCode, ExternalLink, Download, Edit3, Save
 } from 'lucide-react';
 import ZoomLightbox from './ZoomLightbox';
+import JSZip from 'jszip';
 import { SmartImage, ConfirmModal } from './Shared';
 import {
   ToastContainer, toast, Sparkline, Avatar, EmptyStateIllustration,
@@ -211,9 +212,93 @@ export default function AdminView({
   const [projectCategorySuccess, setProjectCategorySuccess] = useState(false);
   const [confirmDeleteKey, setConfirmDeleteKey] = useState<string | null>(null);
   const [enteredClientId, setEnteredClientId] = useState<string | null>(null);
-  const [projectInnertab, setProjectInnertab] = useState<'overview' | 'photos' | 'feedback'>('overview');
+  const [projectInnertab, setProjectInnertab] = useState<'overview' | 'photos' | 'selections' | 'feedback'>('overview');
   const [projectGalleryFilter, setProjectGalleryFilter] = useState<string>('ALL');
+  const [selectedFilterCategory, setSelectedFilterCategory] = useState<string>('ALL');
   const [previewPhoto, setPreviewPhoto] = useState<WeddingPhoto | null>(null);
+
+  const formatClientSortingDuration = (client: ClientAccount): string => {
+    if (client.sortingDurationFormatted) return client.sortingDurationFormatted;
+    const startStr = client.sortingStartTime || client.createdAt;
+    if (!startStr) return "Chrono non démarré";
+    const start = new Date(startStr).getTime();
+    if (isNaN(start)) return "Chrono non démarré";
+    const end = client.sortingEndTime ? new Date(client.sortingEndTime).getTime() : Date.now();
+    const diffMs = Math.max(1000, end - start);
+    const totalSec = Math.floor(diffMs / 1000);
+    const hours = Math.floor(totalSec / 3600);
+    const minutes = Math.floor((totalSec % 3600) / 60);
+    const seconds = totalSec % 60;
+
+    if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`;
+    if (minutes > 0) return `${minutes} min ${seconds} sec`;
+    return `${seconds} sec`;
+  };
+
+  const handleExportFolderZip = async (
+    folderKey: string,
+    clientName: string,
+    photoList: WeddingPhoto[]
+  ) => {
+    if (photoList.length === 0) {
+      toast.warning(`Aucune photo à exporter dans le dossier "${folderKey}".`);
+      return;
+    }
+
+    const sanitizedFolder = folderKey.toLowerCase().replace(/[^a-z0-9_-]/gi, '-');
+    const sanitizedClient = clientName.trim();
+    const zipFilename = `sélection-${sanitizedFolder}-${sanitizedClient}.zip`;
+
+    const toastId = toast.loading(`Création de l'archive ZIP (${photoList.length} photos)...`);
+
+    try {
+      const zip = new JSZip();
+      let count = 0;
+
+      await Promise.all(
+        photoList.map(async (p, idx) => {
+          try {
+            const res = await fetch(p.image);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const blob = await res.blob();
+            let ext = 'jpg';
+            if (p.image.includes('.png')) ext = 'png';
+            else if (p.image.includes('.webp')) ext = 'webp';
+
+            const cleanName = p.name ? p.name.replace(/[^a-z0-9_ \-]/gi, '').trim() : `photo-${idx + 1}`;
+            const num = String(idx + 1).padStart(3, '0');
+            zip.file(`${num}_${cleanName}.${ext}`, blob);
+            count++;
+          } catch (err) {
+            console.error(`Erreur image ZIP ${p.id}:`, err);
+          }
+        })
+      );
+
+      if (count === 0) {
+        toast.dismiss(toastId);
+        toast.error("Impossible de télécharger les photos pour l'archive.");
+        return;
+      }
+
+      const content = await zip.generateAsync({ type: 'blob' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(content);
+      link.href = url;
+      link.download = zipFilename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      toast.dismiss(toastId);
+      toast.success(`Archive "${zipFilename}" téléchargée avec succès (${count} photos) !`);
+    } catch (err: any) {
+      console.error("ZIP Error:", err);
+      toast.dismiss(toastId);
+      toast.error("Erreur lors de la création du fichier ZIP.");
+    }
+  };
 
   // Batch rendering pagination limits for maximum reactivity with 5000+ photos
   const [detailGalleryLimit, setDetailGalleryLimit] = useState<number>(48);
@@ -2015,6 +2100,9 @@ export default function AdminView({
 
                               {/* Metadata chips */}
                               <div className="flex items-center gap-2 flex-wrap text-[9px]">
+                                <span className="inline-flex items-center gap-1 bg-amber-50/90 border border-amber-200 px-2 py-0.5 rounded-md text-amber-900 font-extrabold font-mono shadow-2xs">
+                                  <Clock className={`w-2.5 h-2.5 text-amber-600 ${!client.isLocked ? 'animate-spin-slow' : ''}`} /> {formatClientSortingDuration(client)}
+                                </span>
                                 {client.weddingDate && (
                                   <span className="inline-flex items-center gap-1 bg-amber-50/70 border border-amber-200/50 px-2 py-0.5 rounded-md text-amber-800 font-bold">
                                     <Calendar className="w-2.5 h-2.5 text-amber-600" /> {client.weddingDate}
@@ -2280,7 +2368,7 @@ export default function AdminView({
                   </div>
 
                   {/* Stats row — live metrics */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
                     <div className="bg-gradient-to-br from-brand-olive/5 to-brand-cream border border-brand-sand/60 rounded-xl p-3.5 text-center">
                       <span className="text-[9px] font-extrabold uppercase text-brand-sage tracking-wider block mb-1">Sélection</span>
                       <span className="text-xl font-serif-display font-black text-brand-olive tabular-nums">{targetClient.selectedPhotoIds.length}<span className="text-sm text-brand-sage font-normal">/{targetClient.targetCount}</span></span>
@@ -2288,6 +2376,14 @@ export default function AdminView({
                     <div className="bg-gradient-to-br from-brand-gold/5 to-brand-cream border border-brand-sand/60 rounded-xl p-3.5 text-center">
                       <span className="text-[9px] font-extrabold uppercase text-brand-sage tracking-wider block mb-1">Photos chargées</span>
                       <span className="text-xl font-serif-display font-black text-brand-olive tabular-nums">{clientPhotos.length}</span>
+                    </div>
+                    <div className="bg-gradient-to-br from-amber-50 to-brand-cream border border-amber-200/80 rounded-xl p-3.5 text-center">
+                      <span className="text-[9px] font-extrabold uppercase text-amber-800 tracking-wider flex items-center justify-center gap-1 mb-1">
+                        <Clock className={`w-3 h-3 text-amber-600 ${!targetClient.isLocked ? 'animate-spin-slow' : ''}`} /> Chrono Tri
+                      </span>
+                      <span className="text-xs sm:text-sm font-mono font-black text-amber-900 tabular-nums truncate block">
+                        {formatClientSortingDuration(targetClient)}
+                      </span>
                     </div>
                     <div className="bg-gradient-to-br from-emerald-50 to-brand-cream border border-brand-sand/60 rounded-xl p-3.5 text-center">
                       <span className="text-[9px] font-extrabold uppercase text-brand-sage tracking-wider block mb-1">Dossiers</span>
@@ -2306,14 +2402,15 @@ export default function AdminView({
                 {[
                   { key: 'overview' as const, label: 'Aperçu', Icon: Sparkles, color: '#C2A679' },
                   { key: 'photos' as const, label: 'Galerie', Icon: ImageIcon, color: '#525E43', badge: clientPhotos.length },
-                  { key: 'feedback' as const, label: 'Retouches', Icon: MessageSquare, color: '#964724', badge: targetClient.selectedPhotoIds.length }
+                  { key: 'selections' as const, label: 'Sélection Mariés', Icon: Star, color: '#D4AF37', badge: targetClient.selectedPhotoIds.length },
+                  { key: 'feedback' as const, label: 'Retouches', Icon: MessageSquare, color: '#964724', badge: targetClient.photoComments ? Object.keys(targetClient.photoComments).length : 0 }
                 ].map(t => {
                   const isActive = projectInnertab === t.key;
                   return (
                     <button
                       key={t.key}
                       onClick={() => setProjectInnertab(t.key)}
-                      className={`flex-1 py-2.5 px-4 text-center text-[10.5px] font-extrabold tracking-wider uppercase rounded-xl transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer relative ${
+                      className={`flex-1 py-2.5 px-3 text-center text-[10.5px] font-extrabold tracking-wider uppercase rounded-xl transition-all duration-300 flex items-center justify-center gap-1.5 cursor-pointer relative ${
                         isActive 
                           ? 'text-white shadow-lg' 
                           : 'text-brand-sage hover:text-brand-olive hover:bg-brand-cream'
@@ -2326,11 +2423,11 @@ export default function AdminView({
                           transition={{ type: "spring", damping: 22, stiffness: 240 }}
                         />
                       )}
-                      <span className="relative z-10 flex items-center gap-2">
-                        <t.Icon className="w-4 h-4" style={{ color: isActive ? undefined : t.color }} />
-                        {t.label}
+                      <span className="relative z-10 flex items-center gap-1.5 truncate">
+                        <t.Icon className="w-4 h-4 shrink-0" style={{ color: isActive ? undefined : t.color }} />
+                        <span className="truncate">{t.label}</span>
                         {t.badge !== undefined && (
-                          <span className={`text-[9px] tabular-nums px-1.5 py-0.5 rounded-full font-mono ${
+                          <span className={`text-[9px] tabular-nums px-1.5 py-0.5 rounded-full font-mono shrink-0 ${
                             isActive ? 'bg-white/20 text-brand-cream' : 'bg-brand-sand/60 text-brand-sage'
                           }`}>{t.badge}</span>
                         )}
@@ -3124,6 +3221,125 @@ export default function AdminView({
                       )}
 
                     </div>
+                  </div>
+                </div>
+              )}
+
+              {projectInnertab === 'selections' && (
+                <div className="space-y-6 text-left animate-fade-in">
+                  <div className="bg-white border border-brand-sand rounded-2xl p-5 shadow-sm space-y-4 text-left">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-brand-sand/40 pb-3">
+                      <div>
+                        <h4 className="text-sm text-brand-olive font-extrabold uppercase tracking-widest flex items-center gap-2 font-serif-display">
+                          <Star className="w-4 h-4 text-brand-gold fill-brand-gold" />
+                          Clichés Sélectionnés par le Couple ({targetClient.selectedPhotoIds.length} / {targetClient.targetCount})
+                        </h4>
+                        <p className="text-[11px] text-brand-sage mt-0.5">
+                          Aperçu instantané des photos coup de cœur choisies par les mariés et leur répartition par dossier.
+                        </p>
+                      </div>
+
+                      {/* Sub Category Filters */}
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {(() => {
+                          const choices = targetClient.photoChoices || {};
+                          const selPhotos = photos.filter(p => targetClient.selectedPhotoIds.includes(p.id));
+                          const albumCount = selPhotos.filter(p => choices[p.id] === 'Album').length;
+                          const classiqueCount = selPhotos.filter(p => (choices[p.id] || 'Classique') === 'Classique').length;
+                          const dotCount = selPhotos.filter(p => choices[p.id] === 'Dot').length;
+
+                          return [
+                            { id: 'ALL', label: 'Toutes les sélections', count: selPhotos.length },
+                            { id: 'Album', label: '📖 Album', count: albumCount },
+                            { id: 'Classique', label: '🎨 Classique', count: classiqueCount },
+                            { id: 'Dot', label: '🕊️ Dot', count: dotCount }
+                          ].map(f => (
+                            <button
+                              key={f.id}
+                              type="button"
+                              onClick={() => setSelectedFilterCategory(f.id)}
+                              className={`px-3 py-1.5 rounded-xl text-[10px] font-extrabold uppercase tracking-wider border cursor-pointer transition-all ${
+                                selectedFilterCategory === f.id
+                                  ? 'bg-brand-olive text-white border-brand-olive shadow-xs'
+                                  : 'bg-brand-cream/60 text-brand-sage border-brand-sand hover:text-brand-olive hover:bg-white'
+                              }`}
+                            >
+                              {f.label} ({f.count})
+                            </button>
+                          ));
+                        })()}
+                      </div>
+                    </div>
+
+                    {/* Photos Grid */}
+                    {(() => {
+                      const choices = targetClient.photoChoices || {};
+                      let selPhotos = photos.filter(p => targetClient.selectedPhotoIds.includes(p.id));
+
+                      if (selectedFilterCategory !== 'ALL') {
+                        if (selectedFilterCategory === 'Album') {
+                          selPhotos = selPhotos.filter(p => choices[p.id] === 'Album');
+                        } else if (selectedFilterCategory === 'Classique') {
+                          selPhotos = selPhotos.filter(p => (choices[p.id] || 'Classique') === 'Classique');
+                        } else if (selectedFilterCategory === 'Dot') {
+                          selPhotos = selPhotos.filter(p => choices[p.id] === 'Dot');
+                        }
+                      }
+
+                      if (selPhotos.length === 0) {
+                        return (
+                          <div className="text-center py-12 border border-dashed border-brand-sand bg-brand-cream/10 rounded-2xl">
+                            <Star className="w-8 h-8 text-brand-sand mx-auto mb-2" />
+                            <p className="text-xs text-brand-sage italic">Aucune photo sélectionnée dans cette catégorie pour le moment.</p>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 pt-2">
+                          {selPhotos.map(p => {
+                            const choiceTag = choices[p.id] || 'Classique';
+                            const commentText = targetClient.photoComments?.[p.id];
+                            return (
+                              <div
+                                key={p.id}
+                                className="bg-brand-cream/40 border border-brand-sand/70 rounded-xl p-2 flex flex-col justify-between hover:shadow-md transition-shadow group relative overflow-hidden"
+                              >
+                                <div className="relative aspect-4/5 rounded-lg overflow-hidden bg-brand-sand/30 cursor-zoom-in mb-2" onClick={() => setPreviewPhoto(p)}>
+                                  <img
+                                    src={p.image}
+                                    alt={p.name}
+                                    referrerPolicy="no-referrer"
+                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                  />
+                                  <span className={`absolute top-1.5 right-1.5 px-2 py-0.5 rounded-full text-[8.5px] font-black uppercase tracking-wider shadow-sm backdrop-blur-md ${
+                                    choiceTag === 'Album'
+                                      ? 'bg-amber-500 text-white'
+                                      : choiceTag === 'Dot'
+                                      ? 'bg-blue-600 text-white'
+                                      : 'bg-emerald-600 text-white'
+                                  }`}>
+                                    {choiceTag}
+                                  </span>
+                                </div>
+
+                                <div className="space-y-1">
+                                  <p className="text-[10px] font-extrabold text-brand-olive truncate" title={p.name}>
+                                    {p.name}
+                                  </p>
+
+                                  {commentText && (
+                                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-1.5 text-[9px] text-amber-900 font-serif-display italic leading-tight">
+                                      💬 "{commentText}"
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
               )}

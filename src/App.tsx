@@ -462,22 +462,17 @@ export default function App() {
           selectedPhotoIds: updatedActive.selectedPhotoIds || [],
           dislikedPhotoIds: updatedActive.dislikedPhotoIds || [],
           photoComments: updatedActive.photoComments || {},
-          photoChoices: updatedActive.photoChoices || {}
+          photoChoices: updatedActive.photoChoices
         })
       }).catch(() => {});
     }
 
     // Check if we just hit the target count
-    const newCount = updatedClients.find(c => c.id === activeClient.id)?.selectedPhotoIds.length || 0;
-    if ((dir === 'right' || dir === 'up' || dir === 'down') && newCount === activeClient.targetCount) {
+    const activeTargetCount = activeClient.targetCount || 5;
+    if (updatedActive && updatedActive.selectedPhotoIds.length === activeTargetCount) {
+      sound.play("tada");
       setConfettiTrigger(Date.now());
     }
-
-    fetch("/api/clients", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ clientsList: updatedClients })
-    }).catch(err => { /* noop */ });
   };
 
   const handleUndoAction = () => {
@@ -509,16 +504,10 @@ export default function App() {
           selectedPhotoIds: updatedActive.selectedPhotoIds || [],
           dislikedPhotoIds: updatedActive.dislikedPhotoIds || [],
           photoComments: updatedActive.photoComments || {},
-          photoChoices: updatedActive.photoChoices || {}
+          photoChoices: updatedActive.photoChoices
         })
       }).catch(() => {});
     }
-
-    fetch("/api/clients", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ clientsList: updatedClients })
-    }).catch(err => { /* noop */ });
   };
 
   const handleRemoveFavorite = (photoId: string) => {
@@ -549,16 +538,10 @@ export default function App() {
           selectedPhotoIds: updatedActive.selectedPhotoIds || [],
           dislikedPhotoIds: updatedActive.dislikedPhotoIds || [],
           photoComments: updatedActive.photoComments || {},
-          photoChoices: updatedActive.photoChoices || {}
+          photoChoices: updatedActive.photoChoices
         })
       }).catch(() => {});
     }
-
-    fetch("/api/clients", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ clientsList: updatedClients })
-    }).catch(err => { /* noop */ });
   };
 
   const handleResetSelection = () => {
@@ -584,12 +567,6 @@ export default function App() {
         photoChoices: {}
       })
     }).catch(() => {});
-
-    fetch("/api/clients", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ clientsList: updatedClients })
-    }).catch(err => { /* noop */ });
   };
 
   const handleToggleFavorite = (photoId: string) => {
@@ -618,16 +595,11 @@ export default function App() {
           clientId: activeClient.id,
           selectedPhotoIds: updatedActive.selectedPhotoIds || [],
           dislikedPhotoIds: updatedActive.dislikedPhotoIds || [],
-          photoComments: updatedActive.photoComments || {}
+          photoComments: updatedActive.photoComments || {},
+          photoChoices: updatedActive.photoChoices
         })
       }).catch(() => {});
     }
-
-    fetch("/api/clients", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ clientsList: updatedClients })
-    }).catch(err => { /* noop */ });
   };
 
   const handleLockActiveClient = () => {
@@ -647,15 +619,11 @@ export default function App() {
         clientId: activeClient.id,
         selectedPhotoIds: activeClient.selectedPhotoIds || [],
         dislikedPhotoIds: activeClient.dislikedPhotoIds || [],
-        photoComments: activeClient.photoComments || {}
+        photoComments: activeClient.photoComments || {},
+        photoChoices: activeClient.photoChoices
       })
     }).catch(() => {});
 
-    fetch("/api/clients", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ clientsList: updatedClients })
-    }).catch(err => { /* noop */ });
     fetch(`/api/chats/${activeClient.id}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -680,29 +648,30 @@ export default function App() {
           clientId: activeClient.id,
           selectedPhotoIds: updatedActive.selectedPhotoIds || [],
           dislikedPhotoIds: updatedActive.dislikedPhotoIds || [],
-          photoComments: updatedActive.photoComments || {}
+          photoComments: updatedActive.photoComments || {},
+          photoChoices: updatedActive.photoChoices
         })
       }).catch(() => {});
     }
-
-    fetch("/api/clients", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ clientsList: updatedClients })
-    }).catch(err => { /* noop */ });
   };
 
   const handleResetClientSwipes = () => {
     if (!activeClient) return;
     const updatedClients = clientsList.map(client => client.id === activeClient.id
-      ? { ...client, selectedPhotoIds: [], dislikedPhotoIds: [] }
+      ? { ...client, selectedPhotoIds: [], dislikedPhotoIds: [], photoChoices: {} }
       : client);
     saveClients(updatedClients);
     setClientsList(updatedClients);
-    fetch("/api/clients", {
+    fetch("/api/clients/selection", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ clientsList: updatedClients })
+      body: JSON.stringify({
+        clientId: activeClient.id,
+        selectedPhotoIds: [],
+        dislikedPhotoIds: [],
+        photoComments: activeClient.photoComments || {},
+        photoChoices: {}
+      })
     }).catch(err => { /* noop */ });
   };
 
