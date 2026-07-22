@@ -49,8 +49,7 @@ export default function LikesView({
     (!categoryFilter || categoryFilter === 'Tout' || photo.category === categoryFilter)
   );
 
-  const classiquePhotos = selectedPhotos.filter(photo => photo.category?.toLowerCase() !== 'album');
-  const albumPhotos = selectedPhotos.filter(photo => photo.category?.toLowerCase() === 'album');
+  const currentDisplayList = selectedPhotos;
 
   const allCategoryPhotos = globalPhotos.filter(photo => {
     const isClientPhoto = !photo.clientId || photo.clientId === activeClient.id;
@@ -97,18 +96,14 @@ export default function LikesView({
     else await new Promise(r => setTimeout(r, 800));
   });
 
-  const currentDisplayList = viewMode === 'favorites' ? classiquePhotos : albumPhotos;
-
-  let viewTitle = viewMode === 'favorites' ? "Sélection · Classiques" : "Sélection · Album";
-  let emptyMessage = viewMode === 'favorites' ? "Aucun cliché Classique sélectionné" : "Aucun cliché Album sélectionné";
-  let emptyDescription = viewMode === 'favorites' 
-    ? "Glissez à droite les photos lors du tri pour constituer votre sélection Classique." 
-    : "Sélectionnez des photos dans la catégorie Album pour constituer votre livre photo imprimé.";
+  let viewTitle = "Ma Sélection Photos";
+  let emptyMessage = "Aucun cliché sélectionné";
+  let emptyDescription = "Glissez à droite les photos lors du tri pour constituer votre sélection d'album.";
   let categoryHeadline = "";
 
   if (categoryFilter && categoryFilter !== 'Tout') {
     const label = categoryLabels[categoryFilter] || categoryFilter;
-    viewTitle = `Sélection (${viewMode === 'favorites' ? 'Classiques' : 'Album'}) · ` + label.toUpperCase();
+    viewTitle = `Sélection · ` + label.toUpperCase();
     categoryHeadline = `Série ${label}`;
   }
 
@@ -179,26 +174,10 @@ export default function LikesView({
           </span>
         </div>
 
-        <div className="bg-brand-cream/90 border border-brand-sand/80 p-3 rounded-2xl max-w-lg mx-auto shadow-2xs my-2">
-          <p className="text-sm font-serif-display font-extrabold text-brand-olive leading-normal">
-            {viewMode === 'favorites'
-              ? "Voici vos coups de cœur retenus pour la sélection classique."
-              : "Voici vos clichés sélectionnés pour l'album physique d'exception."}
+        <div className="bg-brand-cream/90 border border-brand-sand/80 p-2.5 rounded-2xl max-w-lg mx-auto shadow-2xs my-1.5">
+          <p className="text-xs sm:text-sm font-serif-display font-extrabold text-brand-olive leading-normal">
+            Voici tous vos clichés coups de cœur sélectionnés pour votre album de noces.
           </p>
-        </div>
-
-        <div className="flex bg-brand-sand/35 border border-brand-sand p-1 rounded-xl max-w-xs mx-auto w-full mt-2 font-sans shadow-2xs relative">
-          <motion.div
-            className="absolute top-1 bottom-1 w-1/2 rounded-lg bg-brand-olive shadow-xs"
-            animate={{ left: viewMode === 'favorites' ? 4 : '50%' }}
-            transition={{ type: "spring", damping: 22, stiffness: 240 }}
-          />
-          <button type="button" onClick={() => setViewMode('favorites')} className={`flex-1 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-colors relative z-10 cursor-pointer ${viewMode === 'favorites' ? 'text-white' : 'text-brand-sage hover:text-brand-olive'}`}>
-            Classiques ({classiquePhotos.length})
-          </button>
-          <button type="button" onClick={() => setViewMode('all')} className={`flex-1 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-colors relative z-10 cursor-pointer ${viewMode === 'all' ? 'text-white' : 'text-brand-sage hover:text-brand-olive'}`}>
-            Album ({albumPhotos.length})
-          </button>
         </div>
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-1.5 mt-3 mb-1">
@@ -355,8 +334,17 @@ export default function LikesView({
             if (currentDisplayList[newIdx]) setLightboxPhoto(currentDisplayList[newIdx]);
           }}
           onClose={() => setLightboxPhoto(null)}
-          isLocked={isLocked}
-          onRemove={() => onRemoveFavorite(lightboxPhoto.id)}
+          onRemove={() => {
+            const currentIdx = currentDisplayList.findIndex(p => p.id === lightboxPhoto.id);
+            onRemoveFavorite(lightboxPhoto.id);
+            const remaining = currentDisplayList.filter(p => p.id !== lightboxPhoto.id);
+            if (remaining.length > 0) {
+              const nextIdx = currentIdx < remaining.length ? currentIdx : Math.max(0, remaining.length - 1);
+              setLightboxPhoto(remaining[nextIdx]);
+            } else {
+              setLightboxPhoto(null);
+            }
+          }}
         />
       )}
 
