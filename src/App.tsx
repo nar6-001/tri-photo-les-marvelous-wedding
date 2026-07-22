@@ -843,7 +843,7 @@ export default function App() {
 
                       <div className="bg-[var(--bg-subtle)] border border-brand-sand/60 rounded-xl p-3 flex flex-col space-y-1.5 shadow-5xs">
                         <div className="flex justify-between items-center text-sm text-brand-olive font-extrabold">
-                          <span>Sélection Album</span>
+                          <span>Ma Sélection</span>
                           <span className="text-brand-gold font-black tabular-nums">{selectedPhotos.length} / {activeClient.targetCount}</span>
                         </div>
                         <div className="h-1.5 w-full bg-brand-sand/35 rounded-full overflow-hidden">
@@ -856,7 +856,7 @@ export default function App() {
                         </div>
                         <span className="text-xs sm:text-sm text-brand-sage leading-normal font-serif-display italic">
                           {selectedPhotos.length >= activeClient.targetCount
-                            ? "🎉 Objectif album complété !"
+                            ? "🎉 Objectif de sélection complété !"
                             : `Encore ${activeClient.targetCount - selectedPhotos.length} clichés à choisir.`}
                         </span>
                       </div>
