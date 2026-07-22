@@ -470,7 +470,7 @@ export default function App() {
     // Check if we just hit the target count
     const activeTargetCount = activeClient.targetCount || 5;
     if (updatedActive && updatedActive.selectedPhotoIds.length === activeTargetCount) {
-      sound.play("tada");
+      sound.play("pop");
       setConfettiTrigger(Date.now());
     }
   };
@@ -567,6 +567,35 @@ export default function App() {
         photoChoices: {}
       })
     }).catch(() => {});
+  };
+
+  const handleUpdatePhotoChoice = (photoId: string, choice: 'Album' | 'Classique' | 'Dot') => {
+    if (!activeClient || activeClient.isLocked) return;
+    sound.play("tap");
+    const updatedClients = clientsList.map(client => {
+      if (client.id === activeClient.id) {
+        const updatedChoices = { ...(client.photoChoices || {}), [photoId]: choice };
+        return { ...client, photoChoices: updatedChoices };
+      }
+      return client;
+    });
+    setClientsList(updatedClients);
+    saveClients(updatedClients);
+
+    const updatedActive = updatedClients.find(c => c.id === activeClient.id);
+    if (updatedActive) {
+      fetch("/api/clients/selection", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          clientId: activeClient.id,
+          selectedPhotoIds: updatedActive.selectedPhotoIds || [],
+          dislikedPhotoIds: updatedActive.dislikedPhotoIds || [],
+          photoComments: updatedActive.photoComments || {},
+          photoChoices: updatedActive.photoChoices || {}
+        })
+      }).catch(() => {});
+    }
   };
 
   const handleToggleFavorite = (photoId: string) => {
@@ -1310,6 +1339,7 @@ export default function App() {
                         onUpdatePhotoComment={handleUpdatePhotoComment}
                         onRefresh={refreshDatabase}
                         onResetSelection={handleResetSelection}
+                        onUpdatePhotoChoice={handleUpdatePhotoChoice}
                       />
                     )}
 
@@ -1325,6 +1355,7 @@ export default function App() {
                         onUpdatePhotoComment={handleUpdatePhotoComment}
                         onRefresh={refreshDatabase}
                         onResetSelection={handleResetSelection}
+                        onUpdatePhotoChoice={handleUpdatePhotoChoice}
                       />
                     )}
 
@@ -1340,6 +1371,7 @@ export default function App() {
                         onUpdatePhotoComment={handleUpdatePhotoComment}
                         onRefresh={refreshDatabase}
                         onResetSelection={handleResetSelection}
+                        onUpdatePhotoChoice={handleUpdatePhotoChoice}
                       />
                     )}
 

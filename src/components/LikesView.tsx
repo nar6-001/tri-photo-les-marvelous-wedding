@@ -22,6 +22,7 @@ interface LikesViewProps {
   onUpdatePhotoComment?: (photoId: string, comment: string) => void;
   onRefresh?: () => Promise<void> | void;
   onResetSelection?: () => void;
+  onUpdatePhotoChoice?: (photoId: string, choice: 'Album' | 'Classique' | 'Dot') => void;
 }
 
 export default function LikesView({
@@ -34,7 +35,8 @@ export default function LikesView({
   onLockSelection,
   onUpdatePhotoComment,
   onRefresh,
-  onResetSelection
+  onResetSelection,
+  onUpdatePhotoChoice
 }: LikesViewProps) {
   const { theme } = usePaletteTheme();
   const [selectionTab, setSelectionTab] = useState<'classique' | 'album'>('classique');

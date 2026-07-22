@@ -249,7 +249,7 @@ export default function AdminView({
     const sanitizedClient = clientName.trim();
     const zipFilename = `sélection-${sanitizedFolder}-${sanitizedClient}.zip`;
 
-    const toastId = toast.loading(`Création de l'archive ZIP (${photoList.length} photos)...`);
+    toast.info(`Création de l'archive ZIP (${photoList.length} photos)...`);
 
     try {
       const zip = new JSZip();
@@ -276,7 +276,6 @@ export default function AdminView({
       );
 
       if (count === 0) {
-        toast.dismiss(toastId);
         toast.error("Impossible de télécharger les photos pour l'archive.");
         return;
       }
@@ -291,11 +290,9 @@ export default function AdminView({
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
 
-      toast.dismiss(toastId);
       toast.success(`Archive "${zipFilename}" téléchargée avec succès (${count} photos) !`);
     } catch (err: any) {
       console.error("ZIP Error:", err);
-      toast.dismiss(toastId);
       toast.error("Erreur lors de la création du fichier ZIP.");
     }
   };
@@ -3238,8 +3235,10 @@ export default function AdminView({
                           Aperçu instantané des photos coup de cœur choisies par les mariés et leur répartition par dossier.
                         </p>
                       </div>
+                    </div>
 
-                      {/* Sub Category Filters */}
+                    {/* Sub Category Filters */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-brand-cream/40 border border-brand-sand/70 p-3 rounded-xl">
                       <div className="flex items-center gap-1.5 flex-wrap">
                         {(() => {
                           const choices = targetClient.photoChoices || {};
@@ -3261,13 +3260,85 @@ export default function AdminView({
                               className={`px-3 py-1.5 rounded-xl text-[10px] font-extrabold uppercase tracking-wider border cursor-pointer transition-all ${
                                 selectedFilterCategory === f.id
                                   ? 'bg-brand-olive text-white border-brand-olive shadow-xs'
-                                  : 'bg-brand-cream/60 text-brand-sage border-brand-sand hover:text-brand-olive hover:bg-white'
+                                  : 'bg-white text-brand-sage border-brand-sand hover:text-brand-olive hover:bg-brand-cream'
                               }`}
                             >
                               {f.label} ({f.count})
                             </button>
                           ));
                         })()}
+                      </div>
+
+                      {/* ZIP Export Buttons */}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const choices = targetClient.photoChoices || {};
+                            const selPhotos = photos.filter(p => targetClient.selectedPhotoIds.includes(p.id));
+                            if (selectedFilterCategory === 'Album') {
+                              const list = selPhotos.filter(p => choices[p.id] === 'Album');
+                              handleExportFolderZip('album', targetClient.name, list);
+                            } else if (selectedFilterCategory === 'Classique') {
+                              const list = selPhotos.filter(p => (choices[p.id] || 'Classique') === 'Classique');
+                              handleExportFolderZip('classique', targetClient.name, list);
+                            } else if (selectedFilterCategory === 'Dot') {
+                              const list = selPhotos.filter(p => choices[p.id] === 'Dot');
+                              handleExportFolderZip('dot', targetClient.name, list);
+                            } else {
+                              handleExportFolderZip('complete', targetClient.name, selPhotos);
+                            }
+                          }}
+                          className="bg-brand-gold hover:bg-brand-gold/90 text-brand-olive font-black px-3.5 py-1.5 rounded-xl text-[10px] uppercase tracking-wider shadow-sm flex items-center gap-1.5 transition-all cursor-pointer active:scale-95 border border-brand-gold/40"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          <span>Exporter ZIP Filtre Actif ({selectedFilterCategory})</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const choices = targetClient.photoChoices || {};
+                            const selPhotos = photos.filter(p => targetClient.selectedPhotoIds.includes(p.id));
+                            const albumList = selPhotos.filter(p => choices[p.id] === 'Album');
+                            handleExportFolderZip('album', targetClient.name, albumList);
+                          }}
+                          className="bg-amber-500 hover:bg-amber-600 text-white font-black px-3 py-1.5 rounded-xl text-[10px] uppercase tracking-wider shadow-sm flex items-center gap-1 transition-all cursor-pointer active:scale-95"
+                          title="Exporter uniquement le dossier Album au format sélection-album-[Mariés].zip"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          <span>ZIP Album</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const choices = targetClient.photoChoices || {};
+                            const selPhotos = photos.filter(p => targetClient.selectedPhotoIds.includes(p.id));
+                            const classiqueList = selPhotos.filter(p => (choices[p.id] || 'Classique') === 'Classique');
+                            handleExportFolderZip('classique', targetClient.name, classiqueList);
+                          }}
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white font-black px-3 py-1.5 rounded-xl text-[10px] uppercase tracking-wider shadow-sm flex items-center gap-1 transition-all cursor-pointer active:scale-95"
+                          title="Exporter uniquement le dossier Classique au format sélection-classique-[Mariés].zip"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          <span>ZIP Classique</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const choices = targetClient.photoChoices || {};
+                            const selPhotos = photos.filter(p => targetClient.selectedPhotoIds.includes(p.id));
+                            const dotList = selPhotos.filter(p => choices[p.id] === 'Dot');
+                            handleExportFolderZip('dot', targetClient.name, dotList);
+                          }}
+                          className="bg-blue-600 hover:bg-blue-700 text-white font-black px-3 py-1.5 rounded-xl text-[10px] uppercase tracking-wider shadow-sm flex items-center gap-1 transition-all cursor-pointer active:scale-95"
+                          title="Exporter uniquement le dossier Dot au format sélection-dot-[Mariés].zip"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          <span>ZIP Dot</span>
+                        </button>
                       </div>
                     </div>
 
