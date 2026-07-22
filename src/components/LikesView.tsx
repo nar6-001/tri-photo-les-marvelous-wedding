@@ -205,29 +205,69 @@ export default function LikesView({
 
 
         {(() => {
+          const classiqueCount = classiquePhotos.length;
           const classiqueTarget = getClientQuotaForCategory('Classique') || getClientQuotaForCategory('Globale') || activeClient.targetCount || 0;
+          const isClassiqueOver = classiqueTarget > 0 && classiqueCount > classiqueTarget;
+          const isClassiqueExact = classiqueTarget > 0 && classiqueCount === classiqueTarget;
+
+          const albumCount = albumPhotos.length;
           const albumTarget = getClientQuotaForCategory('Album') || activeClient.targetCountAlbum || 0;
+          const isAlbumOver = albumTarget > 0 && albumCount > albumTarget;
+          const isAlbumExact = albumTarget > 0 && albumCount === albumTarget;
+
           return (
-            <div className="flex bg-brand-sand/35 border border-brand-sand/70 p-1 rounded-xl max-w-sm mx-auto w-full mt-1.5 font-sans shadow-2xs relative">
-              <button
-                type="button"
-                onClick={() => setSelectionTab('classique')}
-                className={`flex-1 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
-                  selectionTab === 'classique' ? 'bg-brand-olive text-white shadow-xs' : 'text-brand-sage hover:text-brand-olive'
-                }`}
-              >
-                🎨 Classique ({classiquePhotos.length}{classiqueTarget > 0 ? `/${classiqueTarget}` : ''})
-              </button>
-              <button
-                type="button"
-                onClick={() => setSelectionTab('album')}
-                className={`flex-1 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
-                  selectionTab === 'album' ? 'bg-brand-olive text-white shadow-xs' : 'text-brand-sage hover:text-brand-olive'
-                }`}
-              >
-                📖 Album ({albumPhotos.length}{albumTarget > 0 ? `/${albumTarget}` : ''})
-              </button>
-            </div>
+            <>
+              <div className="flex bg-brand-sand/35 border border-brand-sand/70 p-1 rounded-xl max-w-sm mx-auto w-full mt-1.5 font-sans shadow-2xs relative">
+                <button
+                  type="button"
+                  onClick={() => setSelectionTab('classique')}
+                  className={`flex-1 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1 ${
+                    selectionTab === 'classique' ? 'bg-brand-olive text-white shadow-xs' : 'text-brand-sage hover:text-brand-olive'
+                  }`}
+                >
+                  <span>🎨 Classique</span>
+                  <span className={`tabular-nums ${
+                    isClassiqueOver
+                      ? 'text-red-400 font-mono font-black animate-pulse'
+                      : isClassiqueExact
+                      ? (selectionTab === 'classique' ? 'text-emerald-300 font-mono font-black' : 'text-emerald-700 font-mono font-black')
+                      : ''
+                  }`}>
+                    ({classiqueCount}{classiqueTarget > 0 ? `/${classiqueTarget}` : ''})
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectionTab('album')}
+                  className={`flex-1 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1 ${
+                    selectionTab === 'album' ? 'bg-brand-olive text-white shadow-xs' : 'text-brand-sage hover:text-brand-olive'
+                  }`}
+                >
+                  <span>📖 Album</span>
+                  <span className={`tabular-nums ${
+                    isAlbumOver
+                      ? 'text-red-400 font-mono font-black animate-pulse'
+                      : isAlbumExact
+                      ? (selectionTab === 'album' ? 'text-emerald-300 font-mono font-black' : 'text-emerald-700 font-mono font-black')
+                      : ''
+                  }`}>
+                    ({albumCount}{albumTarget > 0 ? `/${albumTarget}` : ''})
+                  </span>
+                </button>
+              </div>
+
+              {isAlbumOver && selectionTab === 'album' && (
+                <div className="bg-red-50 border border-red-300 text-red-700 p-2.5 rounded-xl max-w-sm mx-auto text-[10.5px] font-extrabold flex items-center justify-center gap-2 animate-pulse shadow-sm my-1.5">
+                  <span>⚠️ <strong>Dépassement Album !</strong> {albumCount} photos (objectif: {albumTarget}). Veuillez en retirer {albumCount - albumTarget} pour repasser au vert.</span>
+                </div>
+              )}
+
+              {isClassiqueOver && selectionTab === 'classique' && (
+                <div className="bg-red-50 border border-red-300 text-red-700 p-2.5 rounded-xl max-w-sm mx-auto text-[10.5px] font-extrabold flex items-center justify-center gap-2 animate-pulse shadow-sm my-1.5">
+                  <span>⚠️ <strong>Dépassement Classique !</strong> {classiqueCount} photos (objectif: {classiqueTarget}). Veuillez en retirer {classiqueCount - classiqueTarget} pour repasser au vert.</span>
+                </div>
+              )}
+            </>
           );
         })()}
 

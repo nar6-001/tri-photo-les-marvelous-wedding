@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
-  Sliders, User, RefreshCw, X, Layers, CircleDot, Globe, Images, Bookmark, Heart, MessageSquare, Check, Mail, Key, Lock, Unlock, Clock, PanelLeftClose, PanelLeftOpen, ChevronLeft, ChevronRight, FolderOpen, Folder
+  Sliders, User, RefreshCw, X, Layers, CircleDot, Globe, Images, Bookmark, Heart, MessageSquare, Check, Mail, Key, Lock, Unlock, Clock, PanelLeftClose, PanelLeftOpen, ChevronLeft, ChevronRight, FolderOpen, Folder, CheckSquare
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -12,10 +12,12 @@ import ActionButtons from './components/ActionButtons';
 import LikesView from './components/LikesView';
 import ChatView from './components/ChatView';
 import ProfileView from './components/ProfileView';
+import FinishView from './components/FinishView';
 import AdminView from './components/AdminView';
 import ZoomLightbox from './components/ZoomLightbox';
 import { NumericKeypad } from './components/NumericKeypad';
-import { AnimatedCheck, ConfettiBurst, HeartBurst, LikeToast, PageTransition, SmartImage } from './components/Shared';
+import { AnimatedCheck, ConfettiBurst, HeartBurst, LikeToast, PageTransition, SmartImage, ConfirmModal } from './components/Shared';
+import { OnboardingTutorial } from './components/OnboardingTutorial';
 import { useSound, useTheme } from './hooks';
 
 import {
@@ -52,6 +54,101 @@ export default function App() {
 
   // Client Sidebar collapse state
   const [isClientSidebarCollapsed, setIsClientSidebarCollapsed] = useState(false);
+
+  // Finish sorting modal state
+  const [isFinishModalOpen, setIsFinishModalOpen] = useState(false);
+
+  // Onboarding Tutorial state
+  const [showTutorial, setShowTutorial] = useState(false);
+
+  useEffect(() => {
+    if (activeClient && !isAdminMode) {
+      const tutorialKey = `hasSeenTutorial_${activeClient.id}`;
+      const hasSeen = localStorage.getItem(tutorialKey);
+      if (!hasSeen) {
+        setShowTutorial(true);
+      }
+    }
+  }, [activeClientId, isAdminMode, activeClient]);
+
+  const handleCloseTutorial = () => {
+    if (activeClient) {
+      localStorage.setItem(`hasSeenTutorial_${activeClient.id}`, 'true');
+    }
+    setShowTutorial(false);
+  };
+
+  const getActiveClient = useCallback(() => {
+    return clientsList.find(c => c.id === activeClientId) || clientsList[0];
+  }, [clientsList, activeClientId]);
+
+  const calculateSortingDuration = useCallback(() => {
+    const curr = clientsList.find(c => c.id === activeClientId) || clientsList[0];
+    if (!curr) return "N/A";
+    const start = new Date(curr.sortingStartTime || curr.createdAt || Date.now()).getTime();
+    const end = curr.sortingEndTime ? new Date(curr.sortingEndTime).getTime() : Date.now();
+    const diffMs = Math.max(1000, end - start);
+    const totalSec = Math.floor(diffMs / 1000);
+    const hours = Math.floor(totalSec / 3600);
+    const minutes = Math.floor((totalSec % 3600) / 60);
+    const seconds = totalSec % 60;
+
+    if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`;
+    if (minutes > 0) return `${minutes} min ${seconds} sec`;
+    return `${seconds} secondes`;
+  }, [clientsList, activeClientId]);
+
+  const handleFinishSorting = () => {
+    const curr = getActiveClient();
+    if (!curr) return;
+    if (curr.isLocked) {
+      goToTab('Finish');
+    } else {
+      setIsFinishModalOpen(true);
+    }
+  };
+
+  const handleConfirmFinishSorting = () => {
+    const curr = getActiveClient();
+    if (!curr) return;
+    const duration = calculateSortingDuration();
+    const now = new Date().toISOString();
+
+    const updatedClients = clientsList.map(c => {
+      if (c.id === curr.id) {
+        return {
+          ...c,
+          isLocked: true,
+          sortingEndTime: c.sortingEndTime || now,
+          sortingDurationFormatted: c.sortingDurationFormatted || duration
+        };
+      }
+      return c;
+    });
+
+    saveClients(updatedClients);
+    setClientsList(updatedClients);
+    setIsFinishModalOpen(false);
+    setConfettiTrigger(Date.now());
+    sound.play("pop");
+
+    // Post system message in chat to notify photographer
+    const activeSel = globalPhotos.filter(p => curr.selectedPhotoIds.includes(p.id));
+    const finishMsg = `🎉 TRI PHOTO TERMINÉ PAR LE CLIENT (${curr.name}) !\n\nTotal sélectionné : ${activeSel.length} / ${curr.targetCount} photos.\nTemps de tri : ${duration}.\nStatut : Sélection validée et verrouillée.`;
+
+    fetch("/api/clients/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        clientId: curr.id,
+        message: finishMsg,
+        sender: "system"
+      })
+    }).catch(() => {});
+
+    // Open dedicated Espace de Fin view
+    goToTab('Finish');
+  };
 
   // Admin passcode states
   const [isAdminAuthorized, setIsAdminAuthorized] = useState<boolean>(true);
@@ -142,22 +239,35 @@ export default function App() {
       .catch(err => { /* offline fallback */ });
   }, []);
 
-  // Detect /admin in URL
+  // Detect /adgère237 or /admin in URL
   useEffect(() => {
-    const isLinkAdmin = window.location.pathname === '/admin' ||
-                        window.location.pathname.endsWith('/admin') ||
-                        window.location.pathname.endsWith('/admin/') ||
-                        window.location.pathname.split('/').includes('admin') ||
-                        window.location.hash === '#admin';
-    if (isLinkAdmin) {
-      if (isAdminAuthorized) {
-        setIsAdminModeState(true);
-        setIsAdminMode(true);
-      } else {
-        setIsPasscodeModalOpen(true);
-      }
+    const rawPath = window.location.pathname;
+    const rawSearch = window.location.search;
+    const rawHash = window.location.hash;
+
+    const decodedPath = decodeURIComponent(rawPath).toLowerCase();
+    const decodedSearch = decodeURIComponent(rawSearch).toLowerCase();
+    const decodedHash = decodeURIComponent(rawHash).toLowerCase();
+
+    const isAdgereRoute = 
+      decodedPath.includes('adgère237') || 
+      decodedPath.includes('adgere237') ||
+      decodedSearch.includes('adgère237') ||
+      decodedSearch.includes('adgere237') ||
+      decodedHash.includes('adgère237') ||
+      decodedHash.includes('adgere237') ||
+      rawPath.includes('adg%c3%a8re237') ||
+      rawPath.includes('adg%C3%A8re237') ||
+      decodedPath.endsWith('/admin') ||
+      decodedSearch.includes('admin=true');
+
+    if (isAdgereRoute) {
+      setIsAdminAuthorized(true);
+      localStorage.setItem('wedding_admin_authorized', 'true');
+      setIsAdminModeState(true);
+      setIsAdminMode(true);
     }
-  }, [isAdminAuthorized]);
+  }, []);
 
   // Direct access URL parameters
   useEffect(() => {
@@ -946,33 +1056,20 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Bottom Admin Access */}
+                {/* Bottom Finish Sorting Button */}
                 <div className="pt-3 border-t border-brand-sand shrink-0 w-full">
-                  {isAdminAuthorized ? (
-                    <button
-                      type="button"
-                      onClick={handleEnterAdmin}
-                      title={isClientSidebarCollapsed ? "Espace Admin" : undefined}
-                      className={`w-full bg-brand-cream hover:bg-brand-sand text-brand-gold hover:text-brand-olive py-2 rounded-xl text-[9px] font-extrabold uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all cursor-pointer border border-brand-sand ${
-                        isClientSidebarCollapsed ? 'px-1' : 'px-3'
-                      }`}
-                    >
-                      <User className="w-3.5 h-3.5 text-brand-gold shrink-0" />
-                      {!isClientSidebarCollapsed && <span>Espace Admin</span>}
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => { setIsPasscodeModalOpen(true); setAdminPasscode(''); setPasscodeError(''); }}
-                      title={isClientSidebarCollapsed ? "Accès Admin" : undefined}
-                      className={`w-full bg-transparent hover:bg-brand-cream text-brand-sage hover:text-brand-olive py-2 rounded-xl text-[9px] font-extrabold uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all cursor-pointer border border-dashed border-brand-sand ${
-                        isClientSidebarCollapsed ? 'px-1' : 'px-3'
-                      }`}
-                    >
-                      <Lock className="w-3.5 h-3.5 opacity-60 shrink-0" />
-                      {!isClientSidebarCollapsed && <span>Accès Admin</span>}
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={handleFinishSorting}
+                    className={`w-full py-2 rounded-xl text-[9px] font-extrabold uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all cursor-pointer border shadow-2xs ${
+                      activeClient?.isLocked
+                        ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                        : 'bg-brand-olive text-brand-cream hover:bg-brand-moss border-brand-moss'
+                    } ${isClientSidebarCollapsed ? 'px-1' : 'px-3'}`}
+                  >
+                    {activeClient?.isLocked ? <Lock className="w-3.5 h-3.5 shrink-0 text-emerald-600" /> : <CheckSquare className="w-3.5 h-3.5 shrink-0 text-brand-gold" />}
+                    {!isClientSidebarCollapsed && <span>{activeClient?.isLocked ? 'Tri Validé' : 'Terminer Mon Tri'}</span>}
+                  </button>
                 </div>
               </motion.div>
             )}
@@ -986,18 +1083,9 @@ export default function App() {
                   className="min-h-[56px] py-1.5 shrink-0 bg-[var(--bg-panel)] border-b border-brand-sand px-3 sm:px-4 flex items-center justify-between z-44 sticky top-0 shadow-sm md:hidden gap-2"
                 >
                   <div className="flex flex-col items-start text-left min-w-0 flex-1">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (isAdminAuthorized) handleEnterAdmin();
-                        else { setIsPasscodeModalOpen(true); setAdminPasscode(''); setPasscodeError(''); }
-                      }}
-                      className="flex items-center gap-1.5 text-[9px] font-extrabold uppercase text-brand-gold hover:text-brand-olive tracking-widest leading-none font-serif-display cursor-pointer transition-colors border-0 bg-transparent p-0 outline-none"
-                      title={isAdminAuthorized ? "Espace Admin déverrouillé" : "Saisir le code Admin"}
-                    >
+                    <div className="flex items-center gap-1.5 text-[9px] font-extrabold uppercase text-brand-gold tracking-widest leading-none font-serif-display">
                       <span>Album de Noces</span>
-                      {isAdminAuthorized ? <Unlock className="w-2.5 h-2.5 text-emerald-650" /> : <Key className="w-2.5 h-2.5 opacity-65 text-brand-gold" />}
-                    </button>
+                    </div>
                     <span className="text-xl sm:text-2xl font-serif-display font-black text-brand-olive mt-0.5 leading-tight truncate max-w-full">{activeClient.name}</span>
                   </div>
                   <div className="flex items-center gap-2">
@@ -1332,6 +1420,23 @@ export default function App() {
                         onBack={() => goToTab('Swipe')}
                       />
                     )}
+
+                    {activeTab === 'Finish' && activeClient && (
+                      <FinishView
+                        activeClient={activeClient}
+                        globalPhotos={globalPhotos}
+                        durationFormatted={calculateSortingDuration()}
+                        onOpenChat={() => goToTab('Chat')}
+                        onOpenExplore={() => goToTab('Explore')}
+                        onUnlockSelection={() => {
+                          const updated = clientsList.map(c => c.id === activeClient.id ? { ...c, isLocked: false } : c);
+                          saveClients(updated);
+                          setClientsList(updated);
+                          goToTab('Swipe');
+                        }}
+                        onBackToSwipe={() => goToTab('Swipe')}
+                      />
+                    )}
                   </motion.div>
                 </AnimatePresence>
               </div>
@@ -1377,18 +1482,29 @@ export default function App() {
                     </motion.button>
                   );
                 })}
-                {isAdminAuthorized && activeTab !== 'Profil' && (
-                  <button
-                    id="nav-admin"
-                    type="button"
-                    onClick={handleEnterAdmin}
-                    className="flex flex-col items-center justify-center gap-1 cursor-pointer w-14 transition-all text-brand-sage hover:text-brand-olive"
-                    aria-label="Admin"
-                  >
-                    <Bookmark className="w-5 h-5 text-brand-gold" />
-                    <span className="text-[9px] font-bold uppercase tracking-wide">Admin</span>
-                  </button>
-                )}
+                <motion.button
+                  id="nav-finish"
+                  type="button"
+                  whileTap={{ scale: 0.92 }}
+                  onClick={handleFinishSorting}
+                  className={`flex flex-col items-center justify-center gap-1 cursor-pointer w-14 transition-all relative ${
+                    activeClient?.isLocked
+                      ? 'text-emerald-700 font-black'
+                      : 'text-brand-gold hover:text-brand-olive font-extrabold'
+                  }`}
+                  aria-label="Fin du tri"
+                >
+                  <div className="relative">
+                    {activeClient?.isLocked ? (
+                      <Lock className="w-5 h-5 text-emerald-600" />
+                    ) : (
+                      <CheckSquare className="w-5 h-5 text-brand-gold" />
+                    )}
+                  </div>
+                  <span className="text-[9px] font-bold uppercase tracking-wide">
+                    {activeClient?.isLocked ? 'Validé' : 'Fin'}
+                  </span>
+                </motion.button>
               </div>
             </div>
 
@@ -1470,6 +1586,16 @@ export default function App() {
             )}
           </div>
 
+        <ConfirmModal
+          open={isFinishModalOpen}
+          title="Signaler la fin de votre tri photo ?"
+          message={`Votre sélection actuelle contient ${selectedPhotos.length} photo(s) sur ${activeClient?.targetCount || 0}. En cliquant sur "Oui, Valider", votre tri sera définitivement verrouillé et le photographe sera immédiatement averti avec votre temps de tri.`}
+          confirmLabel="Oui, Valider mon tri"
+          cancelLabel="Continuer mon tri"
+          onConfirm={handleConfirmFinishSorting}
+          onClose={() => setIsFinishModalOpen(false)}
+        />
+
         {/* PASSCODE MODAL — iOS style keypad */}
         <AnimatePresence>
           {isPasscodeModalOpen && (
@@ -1539,6 +1665,14 @@ export default function App() {
             onClose={() => setLightboxPhoto(null)}
             isLocked={activeClient?.isLocked}
             onRemove={activeClient?.selectedPhotoIds.includes(lightboxPhoto.id) ? () => handleRemoveFavorite(lightboxPhoto.id) : undefined}
+          />
+        )}
+        
+        {activeClient && (
+          <OnboardingTutorial 
+            isOpen={showTutorial} 
+            onClose={handleCloseTutorial} 
+            clientName={activeClient.name} 
           />
         )}
       </div>

@@ -12,4 +12,4 @@ export interface Profile {
 
 export type CategoryTab = string;
 
-export type BottomNavTab = 'Swipe' | 'Explore' | 'Likes' | 'Conversations' | 'Profil' | 'Chat';
+export type BottomNavTab = 'Swipe' | 'Explore' | 'Likes' | 'Conversations' | 'Profil' | 'Chat' | 'Finish';

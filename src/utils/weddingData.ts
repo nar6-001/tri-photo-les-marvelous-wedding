@@ -30,6 +30,9 @@ export interface ClientAccount {
   deadline?: string; // deadline for photo selection
   categoryLabels?: Record<string, string>; // custom categories ONLY for this client!
   formula?: string; // price formula chosen (Simple, Premium, Complete, Reve)
+  sortingStartTime?: string; // ISO timestamp when sorting started
+  sortingEndTime?: string; // ISO timestamp when sorting completed
+  sortingDurationFormatted?: string; // Human readable duration (e.g. "18 min 45 sec")
 }
 
 export interface CloudinarySettings {
