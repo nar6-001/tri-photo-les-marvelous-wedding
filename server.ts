@@ -737,6 +737,10 @@ async function fetchFullDatabase(): Promise<DBStructure> {
       const coverPhotoId = quotasObj.__coverPhotoId ?? sel.cover_photo_id ?? null;
       const deadline = quotasObj.__deadline ?? sel.deadline ?? null;
       const photoComments = quotasObj.__photoComments ?? sel.photo_comments ?? {};
+      const photoChoices = quotasObj.__photoChoices ?? sel.photo_choices ?? {};
+      const sortingStartTime = quotasObj.__sortingStartTime ?? sel.sorting_start_time ?? null;
+      const sortingEndTime = quotasObj.__sortingEndTime ?? sel.sorting_end_time ?? null;
+      const sortingDurationFormatted = quotasObj.__sortingDurationFormatted ?? sel.sorting_duration_formatted ?? null;
 
       const cleanQuotas: Record<string, number> = {};
       Object.keys(quotasObj).forEach(k => {
@@ -754,6 +758,10 @@ async function fetchFullDatabase(): Promise<DBStructure> {
         selectedPhotoIds: sel.selected_photo_ids ?? [],
         dislikedPhotoIds: sel.disliked_photo_ids ?? [],
         photoComments,
+        photoChoices,
+        sortingStartTime,
+        sortingEndTime,
+        sortingDurationFormatted,
         isLocked,
         coverPhotoId,
         deadline,
@@ -893,7 +901,11 @@ app.post("/api/clients", async (req, res) => {
         __isLocked: client.isLocked || false,
         __coverPhotoId: client.coverPhotoId || null,
         __deadline: client.deadline || null,
-        __photoComments: client.photoComments || {}
+        __photoComments: client.photoComments || {},
+        __photoChoices: client.photoChoices || {},
+        __sortingStartTime: client.sortingStartTime || null,
+        __sortingEndTime: client.sortingEndTime || null,
+        __sortingDurationFormatted: client.sortingDurationFormatted || null
       };
 
       // Then upsert to wedding_client_selections (child table)
@@ -995,7 +1007,7 @@ app.post("/api/photos/delete-category", async (req, res) => {
 });
 
 app.post("/api/clients/selection", async (req, res) => {
-  const { clientId, selectedPhotoIds, dislikedPhotoIds, photoComments } = req.body;
+  const { clientId, selectedPhotoIds, dislikedPhotoIds, photoComments, photoChoices } = req.body;
   if (!clientId) return res.status(400).json({ error: "Client ID required" });
 
   try {
@@ -1009,7 +1021,8 @@ app.post("/api/clients/selection", async (req, res) => {
       const existingQuotas = existing?.target_category_quotas || {};
       const updatedQuotas = {
         ...existingQuotas,
-        __photoComments: photoComments ?? existingQuotas.__photoComments ?? {}
+        __photoComments: photoComments ?? existingQuotas.__photoComments ?? {},
+        __photoChoices: photoChoices ?? existingQuotas.__photoChoices ?? {}
       };
 
       const { error: upsertErr } = await supabase

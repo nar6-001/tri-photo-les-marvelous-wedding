@@ -16,7 +16,7 @@ import FinishView from './components/FinishView';
 import AdminView from './components/AdminView';
 import ZoomLightbox from './components/ZoomLightbox';
 import { NumericKeypad } from './components/NumericKeypad';
-import { AnimatedCheck, ConfettiBurst, HeartBurst, LikeToast, PageTransition, SmartImage, ConfirmModal } from './components/Shared';
+import { AnimatedCheck, ConfettiBurst, HeartBurst, PageTransition, SmartImage, ConfirmModal } from './components/Shared';
 import { OnboardingTutorial } from './components/OnboardingTutorial';
 import { useSound, useTheme } from './hooks';
 
@@ -43,7 +43,6 @@ export default function App() {
   const [direction, setDirection] = useState<1 | -1>(1);
 
   // Dynamic celebratory notification
-  const [likedPhoto, setLikedPhoto] = useState<{ name: string; image: string } | null>(null);
   const [confettiTrigger, setConfettiTrigger] = useState(0);
   const [heartBurst, setHeartBurst] = useState<{ trigger: number; x: number; y: number }>({ trigger: 0, x: 0, y: 0 });
 
@@ -164,11 +163,20 @@ export default function App() {
               ...(serverC.photoComments || {})
             };
 
+            const mergedChoices = {
+              ...(localC.photoChoices || {}),
+              ...(serverC.photoChoices || {})
+            };
+
             return {
               ...serverC,
               selectedPhotoIds: mergedSelected,
               dislikedPhotoIds: mergedDisliked,
-              photoComments: mergedComments
+              photoComments: mergedComments,
+              photoChoices: mergedChoices,
+              sortingStartTime: serverC.sortingStartTime || localC.sortingStartTime,
+              sortingEndTime: serverC.sortingEndTime || localC.sortingEndTime,
+              sortingDurationFormatted: serverC.sortingDurationFormatted || localC.sortingDurationFormatted
             };
           });
 
@@ -411,7 +419,6 @@ export default function App() {
           const updatedChoices = { ...(client.photoChoices || {}), [photoId]: choiceType };
 
           if (dir === 'right') {
-            setLikedPhoto({ name: currentPhoto.name, image: currentPhoto.image });
             // Heart burst from Like button position
             if (likeBtnRef.current) {
               const rect = likeBtnRef.current.getBoundingClientRect();
@@ -454,7 +461,8 @@ export default function App() {
           clientId: activeClient.id,
           selectedPhotoIds: updatedActive.selectedPhotoIds || [],
           dislikedPhotoIds: updatedActive.dislikedPhotoIds || [],
-          photoComments: updatedActive.photoComments || {}
+          photoComments: updatedActive.photoComments || {},
+          photoChoices: updatedActive.photoChoices || {}
         })
       }).catch(() => {});
     }
@@ -500,7 +508,8 @@ export default function App() {
           clientId: activeClient.id,
           selectedPhotoIds: updatedActive.selectedPhotoIds || [],
           dislikedPhotoIds: updatedActive.dislikedPhotoIds || [],
-          photoComments: updatedActive.photoComments || {}
+          photoComments: updatedActive.photoComments || {},
+          photoChoices: updatedActive.photoChoices || {}
         })
       }).catch(() => {});
     }
@@ -517,7 +526,13 @@ export default function App() {
     if (activeClient.isLocked) return;
     const updatedClients = clientsList.map(client => {
       if (client.id === activeClient.id) {
-        return { ...client, selectedPhotoIds: client.selectedPhotoIds.filter(id => id !== photoId) };
+        const updatedChoices = { ...(client.photoChoices || {}) };
+        delete updatedChoices[photoId];
+        return {
+          ...client,
+          selectedPhotoIds: client.selectedPhotoIds.filter(id => id !== photoId),
+          photoChoices: updatedChoices
+        };
       }
       return client;
     });
@@ -533,7 +548,8 @@ export default function App() {
           clientId: activeClient.id,
           selectedPhotoIds: updatedActive.selectedPhotoIds || [],
           dislikedPhotoIds: updatedActive.dislikedPhotoIds || [],
-          photoComments: updatedActive.photoComments || {}
+          photoComments: updatedActive.photoComments || {},
+          photoChoices: updatedActive.photoChoices || {}
         })
       }).catch(() => {});
     }
@@ -550,7 +566,7 @@ export default function App() {
     if (activeClient.isLocked) return;
     const updatedClients = clientsList.map(client => {
       if (client.id === activeClient.id) {
-        return { ...client, selectedPhotoIds: [], dislikedPhotoIds: [] };
+        return { ...client, selectedPhotoIds: [], dislikedPhotoIds: [], photoChoices: {} };
       }
       return client;
     });
@@ -564,7 +580,8 @@ export default function App() {
         clientId: activeClient.id,
         selectedPhotoIds: [],
         dislikedPhotoIds: [],
-        photoComments: activeClient.photoComments || {}
+        photoComments: activeClient.photoComments || {},
+        photoChoices: {}
       })
     }).catch(() => {});
 
@@ -789,7 +806,6 @@ export default function App() {
       <div className="flex-1 flex flex-col relative min-h-0 bg-[var(--bg-app)]">
         <ConfettiBurst trigger={confettiTrigger} />
         <HeartBurst trigger={heartBurst.trigger} x={heartBurst.x} y={heartBurst.y} />
-        <LikeToast photo={likedPhoto} onDone={() => setLikedPhoto(null)} />
 
         {/* CLIENT MODE */}
         <div className="flex-1 flex flex-col xl:flex-row min-h-0 relative divide-y xl:divide-y-0 xl:divide-x divide-brand-sand select-none">
