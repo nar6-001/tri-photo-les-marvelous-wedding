@@ -218,6 +218,10 @@ export default function AdminView({
   const [detailGalleryLimit, setDetailGalleryLimit] = useState<number>(48);
   const [mainGalleryLimit, setMainGalleryLimit] = useState<number>(48);
 
+  // Custom client access share modal state
+  const [shareModalClient, setShareModalClient] = useState<ClientAccount | null>(null);
+  const [customShareMessage, setCustomShareMessage] = useState<string>('');
+
   useEffect(() => {
     setDetailGalleryLimit(48);
   }, [projectGalleryFilter, enteredClientId]);
@@ -1290,6 +1294,12 @@ export default function AdminView({
 
   // Generate and Copy Couple Link
   const handleCopyAccessLink = (clientId: string) => {
+    const targetClient = clients.find(c => c.id === clientId);
+    if (targetClient) {
+      setShareModalClient(targetClient);
+      setCustomShareMessage('');
+    }
+
     const accessUrl = `${window.location.origin}${window.location.pathname}?client=${clientId}`;
     
     const triggerSuccessFeedback = () => {
@@ -6383,6 +6393,122 @@ export default function AdminView({
                 className="px-5 py-2 rounded-xl border border-brand-sand bg-stone-100 hover:bg-stone-200 text-brand-olive text-xs font-bold transition-all cursor-pointer"
               >
                 Annuler
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* SHARE ACCESS MODAL */}
+      {shareModalClient && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/65 backdrop-blur-md p-4 animate-fade-in" onClick={() => setShareModalClient(null)}>
+          <motion.div
+            initial={{ scale: 0.94, opacity: 0, y: 15 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.94, opacity: 0, y: 15 }}
+            className="bg-white border border-brand-sand/80 rounded-3xl p-6 w-full max-w-lg shadow-2xl text-left space-y-5"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-start justify-between border-b border-brand-sand/40 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-brand-cream border border-brand-sand text-brand-gold flex items-center justify-center shrink-0 shadow-xs">
+                  <Share2 className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="font-serif-display font-bold text-brand-olive text-lg leading-snug">
+                    Partager l'accès client
+                  </h3>
+                  <p className="text-xs text-brand-sage font-medium mt-0.5">
+                    Couple : <span className="font-bold text-brand-olive">{shareModalClient.name}</span>
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShareModalClient(null)}
+                className="text-brand-sand hover:text-brand-olive p-1 rounded-lg transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Direct Link Display */}
+            <div className="space-y-2">
+              <label className="text-[11px] font-extrabold uppercase tracking-wider text-brand-sage block">
+                🔗 Lien direct du couple :
+              </label>
+              <div className="flex items-center gap-2 bg-stone-50 border border-brand-sand rounded-xl p-2.5">
+                <input
+                  type="text"
+                  readOnly
+                  value={`${window.location.origin}${window.location.pathname}?client=${shareModalClient.id}`}
+                  className="w-full bg-transparent text-xs font-mono text-brand-olive focus:outline-none select-all font-semibold"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const link = `${window.location.origin}${window.location.pathname}?client=${shareModalClient.id}`;
+                    navigator.clipboard.writeText(link);
+                    toast.success("Lien copié dans le presse-papier !");
+                  }}
+                  className="bg-brand-olive hover:bg-brand-gold text-brand-cream px-3.5 py-1.5 rounded-lg text-xs font-bold shrink-0 transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                  <span>Copier</span>
+                </button>
+              </div>
+              <p className="text-[10.5px] text-brand-sage leading-normal">
+                💡 Pour modifier l'identifiant du lien (ex: <code>?client=coraly-et-fidele</code>), cliquez sur le bouton <strong>« ÉDITER »</strong> dans la fiche du couple.
+              </p>
+            </div>
+
+            {/* Custom Invitation Message */}
+            <div className="space-y-2 pt-2 border-t border-brand-sand/30">
+              <label className="text-[11px] font-extrabold uppercase tracking-wider text-brand-sage block">
+                💬 Message d'invitation prêt à l'envoi :
+              </label>
+              <textarea
+                rows={5}
+                value={customShareMessage || `Bonjour ${shareModalClient.name} 💒,\n\nVotre galerie photo est prête ! Découvrez et choisissez vos clichés préférés en ouvrant votre espace privé dédié :\n\n👉 ${window.location.origin}${window.location.pathname}?client=${shareModalClient.id}\n\nNombre de clichés à choisir : ${shareModalClient.targetCount} photos\n\nÀ très vite,\nMaison Marvel`}
+                onChange={(e) => setCustomShareMessage(e.target.value)}
+                className="w-full p-3 rounded-xl border border-brand-sand bg-amber-50/40 text-brand-olive text-xs font-sans focus:outline-none focus:border-brand-gold leading-relaxed font-medium"
+              />
+            </div>
+
+            {/* Action Buttons */}
+            <div className="pt-3 border-t border-brand-sand/40 flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                {/* WhatsApp Share */}
+                <a
+                  href={`https://api.whatsapp.com/send?text=${encodeURIComponent(customShareMessage || `Bonjour ${shareModalClient.name} 💒,\n\nVotre galerie photo est prête ! Découvrez et choisissez vos clichés préférés en ouvrant votre espace privé dédié :\n\n👉 ${window.location.origin}${window.location.pathname}?client=${shareModalClient.id}\n\nNombre de clichés à choisir : ${shareModalClient.targetCount} photos\n\nÀ très vite,\nMaison Marvel`)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-colors shadow-xs"
+                >
+                  <span>WhatsApp</span>
+                </a>
+
+                {/* Email Share */}
+                <a
+                  href={`mailto:?subject=${encodeURIComponent(`Vos photos de mariage — ${shareModalClient.name}`)}&body=${encodeURIComponent(customShareMessage || `Bonjour ${shareModalClient.name} 💒,\n\nVotre galerie photo est prête ! Découvrez et choisissez vos clichés préférés en ouvrant votre espace privé dédié :\n\n👉 ${window.location.origin}${window.location.pathname}?client=${shareModalClient.id}\n\nNombre de clichés à choisir : ${shareModalClient.targetCount} photos\n\nÀ très vite,\nMaison Marvel`)}`}
+                  className="bg-sky-600 hover:bg-sky-700 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-colors shadow-xs"
+                >
+                  <span>Email</span>
+                </a>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  const msg = customShareMessage || `Bonjour ${shareModalClient.name} 💒,\n\nVotre galerie photo est prête ! Découvrez et choisissez vos clichés préférés en ouvrant votre espace privé dédié :\n\n👉 ${window.location.origin}${window.location.pathname}?client=${shareModalClient.id}\n\nNombre de clichés à choisir : ${shareModalClient.targetCount} photos\n\nÀ très vite,\nMaison Marvel`;
+                  navigator.clipboard.writeText(msg);
+                  toast.success("Message complet copié !");
+                }}
+                className="bg-brand-olive hover:bg-brand-gold text-brand-cream px-4 py-2 rounded-xl text-xs font-extrabold flex items-center gap-2 transition-colors cursor-pointer shadow-xs"
+              >
+                <Copy className="w-4 h-4" />
+                <span>Copier le message</span>
               </button>
             </div>
           </motion.div>
