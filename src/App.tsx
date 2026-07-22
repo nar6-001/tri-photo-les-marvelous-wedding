@@ -869,7 +869,7 @@ export default function App() {
                       <p className="text-lg sm:text-xl xl:text-2xl font-serif-display font-black text-brand-olive uppercase tracking-tight leading-tight my-1.5 break-words">{activeClient.name}</p>
 
                       <div className="bg-[var(--bg-subtle)] border border-brand-sand/60 rounded-xl p-3 flex flex-col space-y-1.5 shadow-5xs">
-                        <div className="flex justify-between items-center text-[10px] text-brand-olive font-extrabold">
+                        <div className="flex justify-between items-center text-sm text-brand-olive font-extrabold">
                           <span>Sélection Album</span>
                           <span className="text-brand-gold font-black tabular-nums">{selectedPhotos.length} / {activeClient.targetCount}</span>
                         </div>
@@ -881,7 +881,7 @@ export default function App() {
                             transition={{ type: "spring", damping: 22, stiffness: 200 }}
                           />
                         </div>
-                        <span className="text-[8.5px] text-brand-sage leading-normal font-serif-display italic">
+                        <span className="text-xs sm:text-sm text-brand-sage leading-normal font-serif-display italic">
                           {selectedPhotos.length >= activeClient.targetCount
                             ? "🎉 Objectif album complété !"
                             : `Encore ${activeClient.targetCount - selectedPhotos.length} clichés à choisir.`}
@@ -972,17 +972,17 @@ export default function App() {
                                   setActiveCategory('Tout');
                                   setIsClientSidebarCollapsed(true);
                                 }}
-                                className={`w-full flex items-center justify-between px-2 py-1 rounded-md text-[10px] font-bold text-left transition-all cursor-pointer ${
+                                className={`w-full flex items-center justify-between px-2 py-1.5 rounded-md text-xs xl:text-sm font-bold text-left transition-all cursor-pointer ${
                                   activeTab === 'Swipe' && activeCategory === 'Tout'
                                     ? 'bg-brand-gold/20 text-brand-olive font-black'
                                     : 'text-brand-sage hover:text-brand-olive hover:bg-brand-cream/80'
                                 }`}
                               >
                                 <span className="flex items-center gap-1.5 truncate">
-                                  <FolderOpen className="w-3 h-3 text-brand-gold shrink-0" />
+                                  <FolderOpen className="w-3.5 h-3.5 text-brand-gold shrink-0" />
                                   <span className="truncate">Tous les dossiers</span>
                                 </span>
-                                <span className="text-[9px] font-mono font-bold text-brand-olive/80 shrink-0">
+                                <span className="text-[11px] xl:text-xs font-mono font-bold text-brand-olive/80 shrink-0">
                                   ({getFolderPhotoCount('Tout')})
                                 </span>
                               </button>
@@ -1002,17 +1002,17 @@ export default function App() {
                                       setActiveCategory(catKey);
                                       setIsClientSidebarCollapsed(true);
                                     }}
-                                    className={`w-full flex items-center justify-between px-2 py-1 rounded-md text-[10px] font-bold text-left transition-all cursor-pointer ${
+                                    className={`w-full flex items-center justify-between px-2 py-1.5 rounded-md text-xs xl:text-sm font-bold text-left transition-all cursor-pointer ${
                                       isSelected
                                         ? 'bg-brand-gold/20 text-brand-olive font-black'
                                         : 'text-brand-sage hover:text-brand-olive hover:bg-brand-cream/80'
                                     }`}
                                   >
                                     <span className="flex items-center gap-1.5 truncate">
-                                      <Folder className="w-3 h-3 text-brand-gold/80 shrink-0" />
+                                      <Folder className="w-3.5 h-3.5 text-brand-gold/80 shrink-0" />
                                       <span className="truncate">{label}</span>
                                     </span>
-                                    <span className="text-[9px] font-mono font-bold text-brand-olive/80 shrink-0">
+                                    <span className="text-[11px] xl:text-xs font-mono font-bold text-brand-olive/80 shrink-0">
                                       ({count})
                                     </span>
                                   </button>
@@ -1100,7 +1100,7 @@ export default function App() {
 
               {activeTab === 'Swipe' && activeClient && (
                 <div className="bg-[var(--bg-panel)]/80 backdrop-blur border-b border-brand-sand py-1.5 px-2 flex items-center gap-2 justify-between z-40 relative shrink-0 max-w-full overflow-hidden">
-                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-brand-sage whitespace-nowrap tabular-nums hidden sm:inline shrink-0">
+                  <span className="text-xs sm:text-sm font-extrabold uppercase tracking-wider text-brand-sage whitespace-nowrap tabular-nums hidden sm:inline shrink-0">
                     Photo {currentPhoto ? photoQueue.findIndex(p => p.id === currentPhoto.id) + 1 : 0} / {photoQueue.length}
                   </span>
                   <div className="flex items-center gap-1.5 flex-1 min-w-0 overflow-x-auto no-scrollbar scroll-smooth py-0.5 px-0.5 justify-start sm:justify-center">
@@ -1118,7 +1118,7 @@ export default function App() {
                         type="button"
                         whileTap={{ scale: 0.95 }}
                         onClick={() => setActiveCategory(cat)}
-                        className={`relative shrink-0 whitespace-nowrap text-[9px] uppercase tracking-wider font-extrabold px-2.5 py-1 rounded-full transition-colors cursor-pointer flex items-center gap-1.5 ${
+                        className={`relative shrink-0 whitespace-nowrap text-xs sm:text-sm uppercase tracking-wider font-extrabold px-3 py-1.5 rounded-full transition-colors cursor-pointer flex items-center gap-1.5 ${
                           isActive
                             ? 'text-brand-cream'
                             : 'bg-brand-cream text-brand-sage hover:text-brand-olive border border-brand-sand/40'
@@ -1132,7 +1132,7 @@ export default function App() {
                           />
                         )}
                         <span className="relative z-10">{displayName}</span>
-                        <span className={`relative z-10 text-[8.5px] tabular-nums rounded-full px-1.5 py-0.5 font-mono ${
+                        <span className={`relative z-10 text-[10px] sm:text-[11px] tabular-nums rounded-full px-1.5 py-0.5 font-mono ${
                           isActive
                             ? 'bg-white/20 text-brand-cream'
                             : 'bg-brand-sand/80 text-brand-olive/80 font-bold'
