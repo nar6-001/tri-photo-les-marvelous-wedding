@@ -272,11 +272,7 @@ export default function App() {
 
   const getActiveClientPhotos = useCallback(() => {
     if (!activeClient) return [];
-    const specific = globalPhotos.filter(p => p.clientId === activeClient.id);
-    if (specific.length > 0) return specific;
-    const hasAnySpecific = globalPhotos.some(p => !!p.clientId);
-    if (hasAnySpecific) return [];
-    return globalPhotos.filter(p => !p.clientId);
+    return globalPhotos.filter(p => p.clientId === activeClient.id);
   }, [activeClient, globalPhotos]);
 
   const firstCat = Object.keys(currentCategoryLabels)[0] || 'Dot';
@@ -833,10 +829,11 @@ export default function App() {
                     ].map((item) => {
                       const getFolderPhotoCount = (catKey: string): number => {
                         if (!activeClient) return 0;
+                        const clientPhotos = getActiveClientPhotos();
                         if (catKey === 'Tout') {
-                          return globalPhotos.filter(p => !p.clientId || p.clientId === activeClient.id).length;
+                          return clientPhotos.length;
                         }
-                        return globalPhotos.filter(p => (!p.clientId || p.clientId === activeClient.id) && p.category === catKey).length;
+                        return clientPhotos.filter(p => p.category === catKey).length;
                       };
 
                       return (
@@ -1020,9 +1017,7 @@ export default function App() {
                     Photo {currentPhoto ? photoQueue.findIndex(p => p.id === currentPhoto.id) + 1 : 0} / {photoQueue.length}
                   </span>
                   <div className="flex items-center gap-1.5 flex-1 min-w-0 overflow-x-auto no-scrollbar scroll-smooth py-0.5 px-0.5 justify-start sm:justify-center">
-                  {['Tout', ...Object.keys(currentCategoryLabels).filter(cat => {
-                    return globalPhotos.some(p => (!p.clientId || p.clientId === activeClient.id) && p.category === cat);
-                  })].map((cat) => {
+                  {['Tout', ...Object.keys(currentCategoryLabels)].map((cat) => {
                     const isActive = activeCategory === cat;
                     const displayName = cat === 'Tout' ? 'Tout' : (currentCategoryLabels[cat] || cat);
                     const selectedInCat = cat === 'Tout'
