@@ -605,6 +605,7 @@ export default function AdminView({
       targetCountGlobale: finalQuotas['Globale'] || 0,
       targetCountAlbum: finalQuotas['Album'] || 0,
       targetCategoryQuotas: finalQuotas,
+      categoryLabels: {},
       selectedPhotoIds: [],
       dislikedPhotoIds: [],
       notes: newClientNotes.trim() || undefined,
@@ -1982,10 +1983,10 @@ export default function AdminView({
             ? photos.filter(p => p.clientId === targetClient.id)
             : (hasAnyClientPhotos ? [] : photos.filter(p => !p.clientId));
 
-          // Strictly build category labels for this couple
-          const currentCategoryLabels: Record<string, string> = (targetClient.categoryLabels && Object.keys(targetClient.categoryLabels).length > 0)
+          // Strictly build category labels for this couple (no automatic default folders)
+          const currentCategoryLabels: Record<string, string> = targetClient.categoryLabels
             ? { ...targetClient.categoryLabels }
-            : { ...categoryLabels };
+            : {};
 
           clientPhotos.forEach(p => {
             if (p.category && !currentCategoryLabels[p.category]) {

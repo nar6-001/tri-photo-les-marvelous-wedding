@@ -243,9 +243,9 @@ export default function App() {
     : [];
 
   const currentCategoryLabels = useMemo(() => {
-    const merged: Record<string, string> = (activeClient?.categoryLabels && Object.keys(activeClient.categoryLabels).length > 0)
+    const merged: Record<string, string> = activeClient?.categoryLabels
       ? { ...activeClient.categoryLabels }
-      : { ...categoryLabels };
+      : {};
 
     if (activeClient) {
       const hasSpecific = globalPhotos.some(p => p.clientId === activeClient.id);
