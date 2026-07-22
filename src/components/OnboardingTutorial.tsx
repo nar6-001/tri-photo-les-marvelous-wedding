@@ -8,9 +8,10 @@ interface OnboardingTutorialProps {
   onClose: () => void;
   clientName: string;
   targetCount: number;
+  albumQuota?: number;
 }
 
-export function OnboardingTutorial({ isOpen, onClose, clientName, targetCount }: OnboardingTutorialProps) {
+export function OnboardingTutorial({ isOpen, onClose, clientName, targetCount, albumQuota }: OnboardingTutorialProps) {
   const { theme } = usePaletteTheme();
 
   return (
@@ -41,7 +42,7 @@ export function OnboardingTutorial({ isOpen, onClose, clientName, targetCount }:
               </h2>
               
               <p className="text-brand-sage text-sm sm:text-base font-medium mb-8 leading-relaxed px-2">
-                Votre objectif : sélectionner vos <strong className="text-brand-olive font-black">{targetCount} clichés favoris</strong> pour créer l'album de vos rêves.
+                Votre objectif : sélectionner vos <strong className="text-brand-olive font-black">{targetCount} clichés favoris</strong> au total{albumQuota && albumQuota > 0 ? <> (dont <strong className="text-brand-olive font-black">{albumQuota} pour l'album</strong>)</> : ''}.
               </p>
 
               <div className="space-y-4 w-full text-left">

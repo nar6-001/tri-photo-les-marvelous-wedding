@@ -262,12 +262,14 @@ export default function AdminView({
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const blob = await res.blob();
             let ext = 'jpg';
-            if (p.image.includes('.png')) ext = 'png';
-            else if (p.image.includes('.webp')) ext = 'webp';
+            if (p.image.toLowerCase().includes('.png')) ext = 'png';
+            else if (p.image.toLowerCase().includes('.webp')) ext = 'webp';
 
-            const cleanName = p.name ? p.name.replace(/[^a-z0-9_ \-]/gi, '').trim() : `photo-${idx + 1}`;
-            const num = String(idx + 1).padStart(3, '0');
-            zip.file(`${num}_${cleanName}.${ext}`, blob);
+            const rawName = p.name ? p.name.trim() : `photo-${idx + 1}`;
+            const hasExt = /\.(jpg|jpeg|png|webp|gif|avif)$/i.test(rawName);
+            const fileNameInZip = hasExt ? rawName : `${rawName}.${ext}`;
+
+            zip.file(fileNameInZip, blob);
             count++;
           } catch (err) {
             console.error(`Erreur image ZIP ${p.id}:`, err);
@@ -294,6 +296,33 @@ export default function AdminView({
     } catch (err: any) {
       console.error("ZIP Error:", err);
       toast.error("Erreur lors de la création du fichier ZIP.");
+    }
+  };
+
+  const handleUpdateClientPhotoChoice = (clientId: string, photoId: string, choice: 'Album' | 'Classique' | 'Dot') => {
+    const updatedClients = clients.map(client => {
+      if (client.id === clientId) {
+        const updatedChoices = { ...(client.photoChoices || {}), [photoId]: choice };
+        return { ...client, photoChoices: updatedChoices };
+      }
+      return client;
+    });
+    setClients(updatedClients);
+    saveClients(updatedClients);
+
+    const updatedActive = updatedClients.find(c => c.id === clientId);
+    if (updatedActive) {
+      fetch("/api/clients/selection", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          clientId,
+          selectedPhotoIds: updatedActive.selectedPhotoIds || [],
+          dislikedPhotoIds: updatedActive.dislikedPhotoIds || [],
+          photoComments: updatedActive.photoComments || {},
+          photoChoices: updatedActive.photoChoices || {}
+        })
+      }).catch(() => {});
     }
   };
 

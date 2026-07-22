@@ -892,20 +892,28 @@ app.post("/api/clients", async (req, res) => {
         continue;
       }
 
+      const { data: existingSel } = await supabase
+        .from("wedding_client_selections")
+        .select("target_category_quotas")
+        .eq("project_id", client.id)
+        .single();
+      const existingMeta = existingSel?.target_category_quotas || {};
+
       // Pack metadata into target_category_quotas JSONB object
       const rawQuotas = client.targetCategoryQuotas || {};
       const targetCategoryQuotasWithMeta = {
+        ...existingMeta,
         ...rawQuotas,
-        __formula: client.formula || "",
-        __categoryLabels: client.categoryLabels || { Dot: "Dot", Globale: "Classique", Album: "Album" },
-        __isLocked: client.isLocked || false,
-        __coverPhotoId: client.coverPhotoId || null,
-        __deadline: client.deadline || null,
-        __photoComments: client.photoComments || {},
-        __photoChoices: client.photoChoices || {},
-        __sortingStartTime: client.sortingStartTime || null,
-        __sortingEndTime: client.sortingEndTime || null,
-        __sortingDurationFormatted: client.sortingDurationFormatted || null
+        __formula: client.formula || existingMeta.__formula || "",
+        __categoryLabels: client.categoryLabels || existingMeta.__categoryLabels || { Dot: "Dot", Globale: "Classique", Album: "Album" },
+        __isLocked: client.isLocked ?? existingMeta.__isLocked ?? false,
+        __coverPhotoId: client.coverPhotoId || existingMeta.__coverPhotoId || null,
+        __deadline: client.deadline || existingMeta.__deadline || null,
+        __photoComments: { ...(existingMeta.__photoComments || {}), ...(client.photoComments || {}) },
+        __photoChoices: { ...(existingMeta.__photoChoices || {}), ...(client.photoChoices || {}) },
+        __sortingStartTime: client.sortingStartTime || existingMeta.__sortingStartTime || null,
+        __sortingEndTime: client.sortingEndTime || existingMeta.__sortingEndTime || null,
+        __sortingDurationFormatted: client.sortingDurationFormatted || existingMeta.__sortingDurationFormatted || null
       };
 
       // Then upsert to wedding_client_selections (child table)
@@ -1021,8 +1029,14 @@ app.post("/api/clients/selection", async (req, res) => {
       const existingQuotas = existing?.target_category_quotas || {};
       const updatedQuotas = {
         ...existingQuotas,
-        __photoComments: photoComments ?? existingQuotas.__photoComments ?? {},
-        __photoChoices: photoChoices ?? existingQuotas.__photoChoices ?? {}
+        __photoComments: {
+          ...(existingQuotas.__photoComments || {}),
+          ...(photoComments || {})
+        },
+        __photoChoices: {
+          ...(existingQuotas.__photoChoices || {}),
+          ...(photoChoices || {})
+        }
       };
 
       const { error: upsertErr } = await supabase

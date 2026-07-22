@@ -389,6 +389,7 @@ export default function LikesView({
                 const photoComment = activeClient.photoComments?.[photo.id] || '';
                 const isEditing = editingPhotoId === photo.id;
                 const isFavorite = activeClient.selectedPhotoIds.includes(photo.id);
+                const currentChoice = (activeClient.photoChoices?.[photo.id] as 'Album' | 'Classique' | 'Dot') || (photo.category === 'Album' ? 'Album' : 'Classique');
                 return (
                   <PolaroidCard
                     key={photo.id}
@@ -406,6 +407,8 @@ export default function LikesView({
                     onSaveEdit={() => handleSaveComment(photo.id)}
                     onCancelEdit={() => setEditingPhotoId(null)}
                     layout={layout}
+                    currentChoice={currentChoice}
+                    onUpdateChoice={(choice) => onUpdatePhotoChoice?.(photo.id, choice)}
                   />
                 );
               })}
@@ -469,6 +472,8 @@ interface PolaroidCardProps {
   onSaveEdit: () => void;
   onCancelEdit: () => void;
   layout: 'grid' | 'list' | 'compact';
+  currentChoice?: 'Album' | 'Classique' | 'Dot';
+  onUpdateChoice?: (choice: 'Album' | 'Classique' | 'Dot') => void;
   key?: React.Key;
 }
 
@@ -486,7 +491,9 @@ function PolaroidCard({
   onStartEdit,
   onSaveEdit,
   onCancelEdit,
-  layout
+  layout,
+  currentChoice,
+  onUpdateChoice
 }: PolaroidCardProps) {
   const cardRef = useRef<HTMLDivElement>(null);
   const { theme } = usePaletteTheme();
@@ -520,8 +527,9 @@ function PolaroidCard({
         onMouseLeave={handleMouseLeave}
         className="group relative bg-[var(--bg-panel)] rounded-xl p-2.5 sm:p-3 shadow-md border border-brand-sand/65 flex flex-col sm:flex-row gap-3 sm:gap-4 text-left min-w-0 overflow-hidden"
       >
-        <div onClick={onZoom} className="w-full sm:w-36 max-h-[240px] sm:max-h-none aspect-[4/5] rounded-lg bg-[#141612] overflow-hidden relative flex items-center justify-center shrink-0 cursor-pointer group/img">
-          <SmartImage src={photo.image} alt={photo.name} fit="contain" className="duration-500 group-hover:scale-[1.03]" />
+        <div onClick={onZoom} className="w-full sm:w-32 h-32 rounded-lg bg-[#141612] overflow-hidden relative shrink-0 flex items-center justify-center cursor-pointer group/img">
+          <SmartImage src={photo.image} alt={photo.name} fit="cover" className="duration-500 group-hover:scale-[1.04]" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-80" />
           <div className="absolute top-1.5 right-1.5 flex gap-1 z-15">
             <button type="button" onClick={(e) => { e.stopPropagation(); onZoom(); }} aria-label="Agrandir"
               className="w-6.5 h-6.5 rounded-lg bg-brand-cream/95 hover:bg-[var(--bg-panel)] text-brand-olive flex items-center justify-center border border-brand-sand shadow-sm transition-all cursor-pointer">
@@ -552,7 +560,25 @@ function PolaroidCard({
           <div>
             <div className="flex flex-wrap items-start justify-between gap-1.5">
               <h3 className="font-serif-display font-bold text-lg text-brand-olive leading-tight tracking-tight">{photo.name}</h3>
-              <CategoryChip category={photo.category} theme={theme} />
+              <div className="flex items-center gap-1.5">
+                <CategoryChip category={photo.category} theme={theme} />
+                {!isLocked && onUpdateChoice && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onUpdateChoice(currentChoice === 'Album' ? 'Classique' : 'Album');
+                    }}
+                    className={`px-2 py-0.5 rounded text-[8.5px] font-black uppercase border transition-all cursor-pointer ${
+                      currentChoice === 'Album'
+                        ? 'bg-amber-100 border-amber-300 text-amber-900 hover:bg-amber-200'
+                        : 'bg-emerald-100 border-emerald-300 text-emerald-900 hover:bg-emerald-200'
+                    }`}
+                  >
+                    {currentChoice === 'Album' ? '📖 Inclus dans Album' : '🎨 Passé en Classique (Déplacer → Album)'}
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -599,14 +625,28 @@ function PolaroidCard({
           </div>
         </div>
 
-        <div className="pt-1.5 flex items-center justify-between min-w-0 gap-1.5">
-          <p className="font-serif-display font-bold text-xs text-brand-olive truncate leading-none flex-1 tracking-tight" title={photo.name}>{photo.name}</p>
-          <div className="flex items-center gap-0.5 shrink-0">
-            {photoComment && (
-              <MessageSquare className="w-3.5 h-3.5 text-brand-gold fill-brand-gold/10" title={`Consigne : ${photoComment}`} />
-            )}
+        <div className="pt-1.5 flex flex-col min-w-0 gap-1">
+          <div className="flex items-center justify-between min-w-0 gap-1">
+            <p className="font-serif-display font-bold text-xs text-brand-olive truncate leading-none flex-1 tracking-tight" title={photo.name}>{photo.name}</p>
             <CategoryChip category={photo.category} theme={theme} />
           </div>
+
+          {!isLocked && onUpdateChoice && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onUpdateChoice(currentChoice === 'Album' ? 'Classique' : 'Album');
+              }}
+              className={`w-full py-0.5 rounded text-[8px] font-black uppercase border transition-all cursor-pointer truncate ${
+                currentChoice === 'Album'
+                  ? 'bg-amber-100 border-amber-300 text-amber-900 hover:bg-amber-200'
+                  : 'bg-emerald-50 border-emerald-300 text-emerald-800 hover:bg-amber-50'
+              }`}
+            >
+              {currentChoice === 'Album' ? '📖 Album' : '➕ Ajouter à l\'Album'}
+            </button>
+          )}
         </div>
       </motion.div>
     );
@@ -657,10 +697,38 @@ function PolaroidCard({
 
       <div className="pt-2 text-center shrink-0">
         <p className="font-serif-display font-bold text-base text-brand-olive truncate leading-none tracking-tight">{photo.name}</p>
-        <CategoryChip
-          category={photo.category}
-          theme={theme}
-        />
+        <div className="flex items-center justify-center gap-1.5 mt-1">
+          <CategoryChip
+            category={photo.category}
+            theme={theme}
+          />
+          <span className={`text-[8.5px] font-black uppercase px-1.5 py-0.5 rounded-full font-mono ${
+            currentChoice === 'Album' ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-emerald-100 text-emerald-900 border border-emerald-300'
+          }`}>
+            {currentChoice === 'Album' ? '📖 Album' : '🎨 Classique'}
+          </span>
+        </div>
+
+        {!isLocked && onUpdateChoice && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onUpdateChoice(currentChoice === 'Album' ? 'Classique' : 'Album');
+            }}
+            className={`mt-2 w-full py-1.5 px-2 rounded-lg text-[9.5px] font-black uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1 border shadow-2xs ${
+              currentChoice === 'Album'
+                ? 'bg-emerald-50 hover:bg-emerald-100 border-emerald-300 text-emerald-800'
+                : 'bg-amber-50 hover:bg-amber-100 border-amber-300 text-amber-800'
+            }`}
+          >
+            {currentChoice === 'Album' ? (
+              <>🎨 Passé en Classique</>
+            ) : (
+              <>📖 Déplacer dans Album</>
+            )}
+          </button>
+        )}
       </div>
     </motion.div>
   );

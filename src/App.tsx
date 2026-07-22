@@ -820,44 +820,19 @@ export default function App() {
                 }`}
               >
                 <div className="space-y-4 w-full">
-                  {/* Top Header & Retract Toggle */}
+                  {/* Top Header */}
                   <div className="pb-3 border-b border-brand-sand flex items-center justify-between gap-1 w-full">
-                    {!isClientSidebarCollapsed ? (
-                      <>
-                        <div className="flex flex-col text-left min-w-0 flex-1">
-                          <span className="text-[9.5px] font-extrabold uppercase text-brand-gold tracking-widest font-serif-display block leading-normal mb-0.5">
-                            Maison Marvel
-                          </span>
-                          <h1 className="text-sm font-serif-display font-black text-brand-olive uppercase leading-tight tracking-tight truncate">
-                            L'ALBUM DE NOCES
-                          </h1>
-                          <p className="text-[9.5px] font-serif-display text-brand-sage italic mt-0.5 leading-tight">
-                            Votre livre d'or interactif
-                          </p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => setIsClientSidebarCollapsed(true)}
-                          className="p-1.5 rounded-lg bg-brand-cream hover:bg-brand-sand text-brand-sage hover:text-brand-olive transition-colors cursor-pointer shrink-0 ml-1"
-                          title="Replier le volet"
-                          aria-label="Replier le volet"
-                        >
-                          <PanelLeftClose className="w-4 h-4" />
-                        </button>
-                      </>
-                    ) : (
-                      <div className="w-full flex flex-col items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setIsClientSidebarCollapsed(false)}
-                          className="p-2 rounded-xl bg-brand-cream hover:bg-brand-olive hover:text-brand-cream text-brand-olive transition-all cursor-pointer shadow-2xs"
-                          title="Déplier le volet"
-                          aria-label="Déplier le volet"
-                        >
-                          <PanelLeftOpen className="w-4 h-4" />
-                        </button>
-                      </div>
-                    )}
+                    <div className="flex flex-col text-left min-w-0 flex-1">
+                      <span className="text-[9.5px] font-extrabold uppercase text-brand-gold tracking-widest font-serif-display block leading-normal mb-0.5">
+                        Maison Marvel
+                      </span>
+                      <h1 className="text-sm font-serif-display font-black text-brand-olive uppercase leading-tight tracking-tight truncate">
+                        L'ALBUM DE NOCES
+                      </h1>
+                      <p className="text-[9.5px] font-serif-display text-brand-sage italic mt-0.5 leading-tight">
+                        Votre livre d'or interactif
+                      </p>
+                    </div>
                   </div>
 
                   {/* Couple Info & Progress */}
@@ -928,7 +903,6 @@ export default function App() {
                               if (item.tab === 'Swipe') {
                                 setActiveCategory('Tout');
                               }
-                              setIsClientSidebarCollapsed(true);
                             }}
                             title={isClientSidebarCollapsed ? item.label : undefined}
                             className={`flex items-center justify-between rounded-xl text-left text-[11px] font-extrabold uppercase tracking-wide transition-all cursor-pointer outline-none border-none relative ${
@@ -968,7 +942,6 @@ export default function App() {
                                 onClick={() => {
                                   goToTab('Swipe');
                                   setActiveCategory('Tout');
-                                  setIsClientSidebarCollapsed(true);
                                 }}
                                 className={`w-full flex items-center justify-between px-2 py-1.5 rounded-md text-xs xl:text-sm font-bold text-left transition-all cursor-pointer ${
                                   activeTab === 'Swipe' && activeCategory === 'Tout'
@@ -998,7 +971,6 @@ export default function App() {
                                     onClick={() => {
                                       goToTab('Swipe');
                                       setActiveCategory(catKey);
-                                      setIsClientSidebarCollapsed(true);
                                     }}
                                     className={`w-full flex items-center justify-between px-2 py-1.5 rounded-md text-xs xl:text-sm font-bold text-left transition-all cursor-pointer ${
                                       isSelected
@@ -1672,6 +1644,7 @@ export default function App() {
             onClose={handleCloseTutorial} 
             clientName={activeClient.name} 
             targetCount={activeClient.targetCount}
+            albumQuota={activeClient.targetCategoryQuotas?.['Album'] !== undefined ? activeClient.targetCategoryQuotas['Album'] : activeClient.targetCountAlbum}
           />
         )}
       </div>
