@@ -1022,37 +1022,25 @@ export default function App() {
                   <div className="flex items-center gap-1.5 flex-1 min-w-0 overflow-x-auto no-scrollbar scroll-smooth py-0.5 px-0.5 justify-start sm:justify-center">
                   {['Tout', ...Object.keys(currentCategoryLabels)].map((cat) => {
                     const isActive = activeCategory === cat;
-                    const displayName = cat === 'Tout' ? 'Tout' : (currentCategoryLabels[cat] || cat);
-                    const selectedInCat = cat === 'Tout'
-                      ? activeClient.selectedPhotoIds.length
-                      : activeClient.selectedPhotoIds.filter(id => {
-                          const photo = globalPhotos.find(p => p.id === id);
-                          return photo?.category === cat;
-                        }).length;
-                    const selectedTarget = cat === 'Tout'
-                      ? activeClient.targetCount
-                      : (activeClient.targetCategoryQuotas?.[cat] !== undefined
-                          ? activeClient.targetCategoryQuotas[cat]
-                          : (cat === 'Dot' ? activeClient.targetCountDot : (cat === 'Globale' ? activeClient.targetCountGlobale : (cat === 'Album' ? activeClient.targetCountAlbum : 0)))) || 0;
-                    const isDisabledCat = selectedTarget === -1;
-                    const effectiveTarget = isDisabledCat ? 0 : selectedTarget;
-                    const fillRatio = effectiveTarget > 0 ? Math.min(1, selectedInCat / effectiveTarget) : 0;
-                    const quotaDone = effectiveTarget > 0 && selectedInCat >= effectiveTarget;
+                    const displayName = cat === 'Tout' ? 'TOUT' : (currentCategoryLabels[cat] || cat);
+                    const clientPhotos = getActiveClientPhotos();
+                    const totalPhotosInFolder = cat === 'Tout'
+                      ? clientPhotos.length
+                      : clientPhotos.filter(p => p.category === cat).length;
+
                     return (
                       <motion.button
                         key={cat}
                         type="button"
                         whileTap={{ scale: 0.95 }}
                         onClick={() => setActiveCategory(cat)}
-                        className={`relative shrink-0 whitespace-nowrap text-[9px] uppercase tracking-wider font-extrabold px-2.5 py-1 rounded-full transition-colors cursor-pointer flex items-center gap-1 ${
-                          isDisabledCat
-                            ? 'bg-brand-sand/55 text-brand-sand border border-brand-sand/70 cursor-not-allowed line-through opacity-65'
-                            : isActive
+                        className={`relative shrink-0 whitespace-nowrap text-[9px] uppercase tracking-wider font-extrabold px-2.5 py-1 rounded-full transition-colors cursor-pointer flex items-center gap-1.5 ${
+                          isActive
                             ? 'text-brand-cream'
                             : 'bg-brand-cream text-brand-sage hover:text-brand-olive border border-brand-sand/40'
                         }`}
                       >
-                        {isActive && !isDisabledCat && (
+                        {isActive && (
                           <motion.span
                             layoutId="category-pill"
                             className="absolute inset-0 bg-brand-olive rounded-full shadow-xs"
@@ -1060,14 +1048,12 @@ export default function App() {
                           />
                         )}
                         <span className="relative z-10">{displayName}</span>
-                        <span className={`relative z-10 text-[8px] tabular-nums rounded-full px-1.5 py-0.5 font-mono ${
-                          isDisabledCat
-                            ? 'bg-brand-sand text-brand-moss'
-                            : isActive
-                            ? (quotaDone ? 'bg-emerald-400/95 text-emerald-950' : 'bg-white/20 text-brand-cream')
-                            : (quotaDone ? 'bg-emerald-100 text-emerald-700' : (fillRatio >= 0.85 && effectiveTarget > 0 ? 'bg-amber-100 text-amber-700' : 'bg-brand-sand text-brand-sage'))
+                        <span className={`relative z-10 text-[8.5px] tabular-nums rounded-full px-1.5 py-0.5 font-mono ${
+                          isActive
+                            ? 'bg-white/20 text-brand-cream'
+                            : 'bg-brand-sand/80 text-brand-olive/80 font-bold'
                         }`}>
-                          {selectedInCat}{effectiveTarget > 0 ? `/${effectiveTarget}` : (isDisabledCat ? '∞' : '')}
+                          ({totalPhotosInFolder})
                         </span>
                       </motion.button>
                     );

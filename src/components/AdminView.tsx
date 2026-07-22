@@ -5,7 +5,7 @@ import {
   Check, AlertCircle, RefreshCw, Key, HelpCircle, ArrowLeft, Bookmark,
   MessageSquare, Lock, Unlock, Link as LinkIcon, Filter, Camera, FileImage,
   FolderOpen, Send, Copy, Search, Calendar, Globe, X, ZoomIn, Clock, ChevronLeft, ChevronRight,
-  Command, Pin, Bell, Eye, EyeOff, Hash, MoreVertical, Sparkles, Tag, Star, Edit2, Archive, Terminal, Share2,
+  Command, Pin, Bell, Eye, EyeOff, Hash, MoreVertical, Sparkles, Tag, Star, Edit2, Archive, Terminal, Share2, CheckCircle2,
   QrCode, ExternalLink, Download, Edit3, Save
 } from 'lucide-react';
 import ZoomLightbox from './ZoomLightbox';
@@ -2860,36 +2860,75 @@ export default function AdminView({
                               )}
                             </div>
 
-                            {/* Import Queue feedback */}
-                            {bulkQueue.length > 0 && (
-                              <div className="bg-brand-cream/40 border border-brand-sand rounded-xl p-3 space-y-1.5 max-h-[140px] overflow-y-auto no-scrollbar mt-3">
-                                {bulkQueue.slice(0, 10).map(task => (
-                                  <div key={task.id} className="text-left text-[9px] flex flex-col gap-1 bg-white p-2 rounded border border-brand-sand/40">
-                                    <div className="flex justify-between items-center font-bold">
-                                      <span className="truncate max-w-[120px] text-brand-olive">{task.name}</span>
-                                      <span className={`${
-                                        task.status === 'success' ? 'text-emerald-600' : task.status === 'error' ? 'text-red-500' : 'text-brand-gold'
-                                      }`}>
-                                        {task.status === 'success' ? 'Prêt' : task.status === 'error' ? 'Échec' : `${task.progress}%`}
-                                      </span>
-                                    </div>
-                                    <div className="w-full bg-brand-sand h-1 rounded overflow-hidden font-sans">
-                                      <div 
-                                        className={`h-full transition-all duration-300 ${
-                                          task.status === 'success' ? 'bg-emerald-500' : task.status === 'error' ? 'bg-red-500' : 'bg-brand-gold'
-                                        }`}
-                                        style={{ width: `${task.progress}%` }}
-                                      />
-                                    </div>
-                                    {task.status === 'error' && task.errorMsg && (
-                                      <p className="text-[8px] text-red-500 font-sans mt-0.5 leading-normal bg-red-50 p-1.5 rounded border border-red-100 whitespace-pre-wrap">
-                                        {task.errorMsg}
-                                      </p>
-                                    )}
-                                  </div>
-                                ))}
-                              </div>
-                            )}
+                             {/* Import Queue feedback */}
+                             {bulkQueue.length > 0 && (() => {
+                               const allCompleted = bulkQueue.every(t => t.status === 'success' || t.status === 'error');
+                               const successCount = bulkQueue.filter(t => t.status === 'success').length;
+                               const errorCount = bulkQueue.filter(t => t.status === 'error').length;
+
+                               return (
+                                 <div className="bg-brand-cream/50 border border-brand-sand rounded-xl p-3 space-y-2 mt-3 text-left shadow-sm">
+                                   {/* Header & Clear list button */}
+                                   <div className="flex items-center justify-between border-b border-brand-sand/40 pb-1.5">
+                                     <span className="text-[8.5px] font-black uppercase text-brand-sage tracking-widest block">Suivi des chargements</span>
+                                     <button
+                                       type="button"
+                                       onClick={() => setBulkQueue([])}
+                                       className="text-[8.5px] font-bold text-brand-sage hover:text-brand-olive cursor-pointer underline transition-colors"
+                                     >
+                                       Masquer
+                                     </button>
+                                   </div>
+
+                                   {/* Banner Fin de Chargement */}
+                                   {allCompleted && !isUploading ? (
+                                     <div className="bg-emerald-50 border-2 border-emerald-300 rounded-lg p-2.5 text-center space-y-0.5 shadow-xs">
+                                       <div className="flex items-center justify-center gap-1.5 text-emerald-800 font-black text-xs font-serif-display uppercase tracking-wide">
+                                         <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 animate-bounce" />
+                                         <span>🎉 Importation terminée avec succès !</span>
+                                       </div>
+                                       <p className="text-[10px] font-bold text-emerald-700">
+                                         {successCount} photo{successCount > 1 ? 's' : ''} bien chargée{successCount > 1 ? 's' : ''} et enregistrée{successCount > 1 ? 's' : ''} dans "{currentCategoryLabels[resolvedUploadCategory] || 'ce dossier'}".
+                                         {errorCount > 0 && <span className="text-red-600 font-bold ml-1">({errorCount} échec{errorCount > 1 ? 's' : ''})</span>}
+                                       </p>
+                                     </div>
+                                   ) : isUploading ? (
+                                     <div className="bg-amber-50 border border-amber-200 rounded-lg p-2 text-center flex items-center justify-center gap-2 text-amber-900 font-bold text-[10px]">
+                                       <RefreshCw className="w-3.5 h-3.5 text-amber-600 animate-spin shrink-0" />
+                                       <span>Chargement en cours ({batchCompleted} / {batchTotal} photos)...</span>
+                                     </div>
+                                   ) : null}
+
+                                   <div className="space-y-1.5 max-h-[140px] overflow-y-auto no-scrollbar">
+                                     {bulkQueue.slice(0, 15).map(task => (
+                                       <div key={task.id} className="text-left text-[9px] flex flex-col gap-1 bg-white p-2 rounded border border-brand-sand/40">
+                                         <div className="flex justify-between items-center font-bold">
+                                           <span className="truncate max-w-[140px] text-brand-olive">{task.name}</span>
+                                           <span className={`${
+                                             task.status === 'success' ? 'text-emerald-600 font-black' : task.status === 'error' ? 'text-red-500 font-black' : 'text-brand-gold'
+                                           }`}>
+                                             {task.status === 'success' ? '✓ Prêt' : task.status === 'error' ? 'Échec' : `${task.progress}%`}
+                                           </span>
+                                         </div>
+                                         <div className="w-full bg-brand-sand h-1 rounded overflow-hidden font-sans">
+                                           <div 
+                                             className={`h-full transition-all duration-300 ${
+                                               task.status === 'success' ? 'bg-emerald-500' : task.status === 'error' ? 'bg-red-500' : 'bg-brand-gold'
+                                             }`}
+                                             style={{ width: `${task.progress}%` }}
+                                           />
+                                         </div>
+                                         {task.status === 'error' && task.errorMsg && (
+                                           <p className="text-[8px] text-red-500 font-sans mt-0.5 leading-normal bg-red-50 p-1.5 rounded border border-red-100 whitespace-pre-wrap">
+                                             {task.errorMsg}
+                                           </p>
+                                         )}
+                                       </div>
+                                     ))}
+                                   </div>
+                                 </div>
+                               );
+                             })()}
                           </>
                         );
                       })()}
@@ -4818,38 +4857,73 @@ export default function AdminView({
                       })()}
 
                       {/* Display bulk progress queue specifically for the modal view if there's any pending */}
-                      {bulkQueue.length > 0 && (
-                        <div className="bg-brand-cream/55 border border-brand-sand rounded-xl p-3 space-y-2 max-h-[145px] overflow-y-auto no-scrollbar">
-                          <span className="text-[8px] font-extrabold uppercase text-brand-sage tracking-widest block">Suivi des imports :</span>
-                          <div className="space-y-1.5">
-                            {bulkQueue.slice(0, 10).map(task => (
-                              <div key={task.id} className="text-left text-[9.5px] leading-tight flex flex-col gap-1 bg-white p-2 rounded border border-brand-sand/40">
-                                <div className="flex justify-between items-center font-medium font-serif-display">
-                                  <span className="truncate max-w-[200px] text-brand-olive">{task.name}</span>
-                                  <span className={`${
-                                    task.status === 'success' ? 'text-emerald-600 font-bold' : task.status === 'error' ? 'text-red-500' : 'text-brand-gold font-mono'
-                                  }`}>
-                                    {task.status === 'success' ? '✓ Prêt' : task.status === 'error' ? 'Échec' : `${task.progress}%`}
-                                  </span>
+                      {bulkQueue.length > 0 && (() => {
+                        const allCompleted = bulkQueue.every(t => t.status === 'success' || t.status === 'error');
+                        const successCount = bulkQueue.filter(t => t.status === 'success').length;
+                        const errorCount = bulkQueue.filter(t => t.status === 'error').length;
+
+                        return (
+                          <div className="bg-brand-cream/55 border border-brand-sand rounded-xl p-3 space-y-2 text-left">
+                            <div className="flex items-center justify-between border-b border-brand-sand/40 pb-1.5">
+                              <span className="text-[8.5px] font-extrabold uppercase text-brand-sage tracking-widest block">Suivi des imports</span>
+                              <button
+                                type="button"
+                                onClick={() => setBulkQueue([])}
+                                className="text-[8.5px] font-bold text-brand-sage hover:text-brand-olive cursor-pointer underline transition-colors"
+                              >
+                                Masquer
+                              </button>
+                            </div>
+
+                            {/* Banner Fin de Chargement */}
+                            {allCompleted && !isUploading ? (
+                              <div className="bg-emerald-50 border-2 border-emerald-300 rounded-lg p-2.5 text-center space-y-0.5 shadow-xs">
+                                <div className="flex items-center justify-center gap-1.5 text-emerald-800 font-black text-xs font-serif-display uppercase tracking-wide">
+                                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                                  <span>🎉 Importation terminée avec succès !</span>
                                 </div>
-                                <div className="w-full bg-brand-sand/55 h-1 rounded overflow-hidden">
-                                  <div 
-                                    className={`h-full transition-all duration-300 ${
-                                      task.status === 'success' ? 'bg-emerald-500' : task.status === 'error' ? 'bg-red-500' : 'bg-brand-gold'
-                                    }`}
-                                    style={{ width: `${task.progress}%` }}
-                                  />
-                                </div>
-                                {task.status === 'error' && task.errorMsg && (
-                                  <p className="text-[8.5px] text-red-500 font-sans mt-0.5 leading-normal bg-red-50 p-1.5 rounded border border-red-100 whitespace-pre-wrap">
-                                    {task.errorMsg}
-                                  </p>
-                                )}
+                                <p className="text-[10px] font-bold text-emerald-700">
+                                  {successCount} photo{successCount > 1 ? 's' : ''} bien enregistrée{successCount > 1 ? 's' : ''} en base.
+                                  {errorCount > 0 && <span className="text-red-600 font-bold ml-1">({errorCount} échec{errorCount > 1 ? 's' : ''})</span>}
+                                </p>
                               </div>
-                            ))}
+                            ) : isUploading ? (
+                              <div className="bg-amber-50 border border-amber-200 rounded-lg p-2 text-center flex items-center justify-center gap-2 text-amber-900 font-bold text-[10px]">
+                                <RefreshCw className="w-3.5 h-3.5 text-amber-600 animate-spin shrink-0" />
+                                <span>Chargement en cours ({batchCompleted} / {batchTotal} photos)...</span>
+                              </div>
+                            ) : null}
+
+                            <div className="space-y-1.5 max-h-[145px] overflow-y-auto no-scrollbar">
+                              {bulkQueue.slice(0, 15).map(task => (
+                                <div key={task.id} className="text-left text-[9.5px] leading-tight flex flex-col gap-1 bg-white p-2 rounded border border-brand-sand/40">
+                                  <div className="flex justify-between items-center font-medium font-serif-display">
+                                    <span className="truncate max-w-[200px] text-brand-olive">{task.name}</span>
+                                    <span className={`${
+                                      task.status === 'success' ? 'text-emerald-600 font-black' : task.status === 'error' ? 'text-red-500 font-black' : 'text-brand-gold font-mono'
+                                    }`}>
+                                      {task.status === 'success' ? '✓ Prêt' : task.status === 'error' ? 'Échec' : `${task.progress}%`}
+                                    </span>
+                                  </div>
+                                  <div className="w-full bg-brand-sand/55 h-1 rounded overflow-hidden">
+                                    <div 
+                                      className={`h-full transition-all duration-300 ${
+                                        task.status === 'success' ? 'bg-emerald-500' : task.status === 'error' ? 'bg-red-500' : 'bg-brand-gold'
+                                      }`}
+                                      style={{ width: `${task.progress}%` }}
+                                    />
+                                  </div>
+                                  {task.status === 'error' && task.errorMsg && (
+                                    <p className="text-[8.5px] text-red-500 font-sans mt-0.5 leading-normal bg-red-50 p-1.5 rounded border border-red-100 whitespace-pre-wrap">
+                                      {task.errorMsg}
+                                    </p>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
                           </div>
-                        </div>
-                      )}
+                        );
+                      })()}
 
                       {/* Client Specific Gallery inside Modal so photographer can verify/delete current uploaded photos */}
                       <div className="space-y-2">
