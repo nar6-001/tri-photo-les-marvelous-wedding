@@ -13,6 +13,12 @@ interface ActionButtonsProps {
     Globale?: boolean;
     Album?: boolean;
   };
+  categoryCounts?: {
+    Dot?: number;
+    Globale?: number;
+    Album?: number;
+    [key: string]: number | undefined;
+  };
 }
 
 function MagneticButton({ children, onClick, className, style, title, disabled, ariaLabel }: {
@@ -79,7 +85,11 @@ function MagneticButton({ children, onClick, className, style, title, disabled, 
   );
 }
 
-export default function ActionButtons({ onSwipe, onUndo, canUndo, onCommentClick, disabled, disabledCategories }: ActionButtonsProps) {
+export default function ActionButtons({ onSwipe, onUndo, canUndo, onCommentClick, disabled, disabledCategories, categoryCounts }: ActionButtonsProps) {
+  const dotCount = categoryCounts?.Dot || 0;
+  const classiqueCount = categoryCounts?.Globale || 0;
+  const albumCount = categoryCounts?.Album || 0;
+
   return (
     <div className="flex items-center justify-center gap-3 w-full px-2 sm:px-4 select-none shrink-0 py-4 bg-transparent mt-1 z-30">
       <div className="flex flex-col items-center gap-1.5">
@@ -94,7 +104,7 @@ export default function ActionButtons({ onSwipe, onUndo, canUndo, onCommentClick
         >
           <RotateCcw className="w-4.5 h-4.5 stroke-[2.5]" />
         </MagneticButton>
-        <span className="text-[8px] font-extrabold uppercase text-brand-sage tracking-wider md:hidden">Retour</span>
+        <span className="text-[8.5px] font-extrabold uppercase text-brand-sage tracking-wider">Retour</span>
       </div>
 
       <div className="flex flex-col items-center gap-1.5">
@@ -107,43 +117,57 @@ export default function ActionButtons({ onSwipe, onUndo, canUndo, onCommentClick
         >
           <X className="w-7 h-7 stroke-[3]" />
         </MagneticButton>
-        <span className="text-[8px] font-extrabold uppercase text-red-400 tracking-wider md:hidden">Écarter</span>
+        <span className="text-[8.5px] font-extrabold uppercase text-red-400 tracking-wider">Écarter</span>
       </div>
 
       {!disabledCategories?.Dot && (
-        <div className="flex flex-col items-center gap-1.5">
+        <div className="flex flex-col items-center gap-1.5 relative">
           <MagneticButton
             onClick={() => onSwipe('down')}
             disabled={disabled}
             ariaLabel="Sélection Dot"
-            className="w-11 h-11 flex items-center justify-center rounded-full hover:brightness-95 border-2 shadow-md duration-300 cursor-pointer"
+            className="w-11 h-11 flex items-center justify-center rounded-full hover:brightness-95 border-2 shadow-md duration-300 cursor-pointer relative"
             style={{ background: "#E8A87C", borderColor: "#C9744E", color: "#5C2E0E" }}
             title="Sélection Dot"
           >
-            <span className="font-serif-display font-black text-[20px] leading-none">D</span>
+            <span className="font-serif-display font-black text-[20px] leading-none notranslate" translate="no">D</span>
+            {dotCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-[#5C2E0E] text-white text-[9px] font-black rounded-full min-w-5 h-5 px-1 flex items-center justify-center shadow-sm border border-white">
+                {dotCount}
+              </span>
+            )}
           </MagneticButton>
-          <span className="text-[8px] font-extrabold uppercase text-[#C9744E] tracking-wider md:hidden">Dot</span>
+          <span className="text-[8.5px] font-extrabold uppercase text-[#C9744E] tracking-wider font-mono">
+            Dot ({dotCount})
+          </span>
         </div>
       )}
 
       {!disabledCategories?.Globale && (
-        <div className="flex flex-col items-center gap-1.5">
+        <div className="flex flex-col items-center gap-1.5 relative">
           <MagneticButton
             onClick={() => onSwipe('up')}
             disabled={disabled}
             ariaLabel="Retouche classique"
-            className="w-11 h-11 flex items-center justify-center rounded-full hover:brightness-95 border-2 shadow-md duration-300 cursor-pointer"
+            className="w-11 h-11 flex items-center justify-center rounded-full hover:brightness-95 border-2 shadow-md duration-300 cursor-pointer relative"
             style={{ background: "#C5D9B5", borderColor: "#8FAF7B", color: "#2D4A1F" }}
             title="Retouche classique"
           >
-            <span className="font-serif-display font-black text-[20px] leading-none">C</span>
+            <span className="font-serif-display font-black text-[20px] leading-none notranslate" translate="no">C</span>
+            {classiqueCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-[#2D4A1F] text-white text-[9px] font-black rounded-full min-w-5 h-5 px-1 flex items-center justify-center shadow-sm border border-white">
+                {classiqueCount}
+              </span>
+            )}
           </MagneticButton>
-          <span className="text-[8px] font-extrabold uppercase text-[#8FAF7B] tracking-wider md:hidden">Classique</span>
+          <span className="text-[8.5px] font-extrabold uppercase text-[#4A6B3A] tracking-wider font-mono">
+            Classique ({classiqueCount})
+          </span>
         </div>
       )}
 
       {!disabledCategories?.Album && (
-        <div className="flex flex-col items-center gap-1.5">
+        <div className="flex flex-col items-center gap-1.5 relative">
           <motion.div
             animate={disabled ? {} : { scale: [1, 1.04, 1] }}
             transition={disabled ? {} : { duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
@@ -153,14 +177,21 @@ export default function ActionButtons({ onSwipe, onUndo, canUndo, onCommentClick
               onClick={() => onSwipe('right')}
               disabled={disabled}
               ariaLabel="Ajouter à l'album"
-              className="w-14 h-14 flex items-center justify-center rounded-full hover:brightness-110 border-2 border-white/60 shadow-lg duration-300 cursor-pointer halo-pulse"
+              className="w-14 h-14 flex items-center justify-center rounded-full hover:brightness-110 border-2 border-white/60 shadow-lg duration-300 cursor-pointer halo-pulse relative"
               style={{ background: "#2E2E2E", color: "#FDFBF8" }}
               title="Ajouter à l'album"
             >
-              <span className="font-serif-display font-black text-[26px] leading-none">A</span>
+              <span className="font-serif-display font-black text-[26px] leading-none notranslate" translate="no">A</span>
+              {albumCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-amber-500 text-white text-[10px] font-black rounded-full min-w-5.5 h-5.5 px-1 flex items-center justify-center shadow-sm border border-white">
+                  {albumCount}
+                </span>
+              )}
             </MagneticButton>
           </motion.div>
-          <span className="text-[8px] font-extrabold uppercase text-brand-olive tracking-wider md:hidden">Album</span>
+          <span className="text-[8.5px] font-extrabold uppercase text-brand-olive tracking-wider font-mono">
+            Album ({albumCount})
+          </span>
         </div>
       )}
 
@@ -174,7 +205,7 @@ export default function ActionButtons({ onSwipe, onUndo, canUndo, onCommentClick
         >
           <MessageSquare className="w-4.5 h-4.5 stroke-[2.5] text-brand-olive" />
         </MagneticButton>
-        <span className="text-[8px] font-extrabold uppercase text-brand-sage tracking-wider md:hidden">Note</span>
+        <span className="text-[8.5px] font-extrabold uppercase text-brand-sage tracking-wider">Note</span>
       </div>
     </div>
   );

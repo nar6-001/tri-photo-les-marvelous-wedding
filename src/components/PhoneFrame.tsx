@@ -68,12 +68,12 @@ export default function PhoneFrame({ children }: PhoneFrameProps) {
       <main className={`relative z-20 w-full flex flex-col ${
         isLargeScreen
           ? "h-screen p-4 lg:p-6"
-          : "min-h-[580px] p-2"
+          : "h-[100dvh] max-h-[100dvh] p-0 sm:p-2 overflow-hidden"
       }`}>
-        <div className={`w-full bg-[var(--bg-panel)] border border-brand-sand rounded-none sm:rounded-2xl shadow-xl relative flex flex-col overflow-hidden ${
+        <div className={`w-full bg-[var(--bg-panel)] border-0 sm:border border-brand-sand rounded-none sm:rounded-2xl shadow-xl relative flex flex-col overflow-hidden ${
           isLargeScreen
             ? "h-full max-w-none"
-            : "max-w-md md:max-w-6xl h-[calc(100vh-16px)] sm:h-[730px] md:h-[800px]"
+            : "max-w-md md:max-w-6xl h-[100dvh] sm:h-[730px] md:h-[800px]"
         }`}>
           <div className="flex-1 flex flex-col min-h-0 relative">
             {children}

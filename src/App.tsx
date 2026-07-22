@@ -1186,6 +1186,11 @@ export default function App() {
                                   Globale: activeClient ? (activeClient.targetCategoryQuotas?.['Globale'] !== undefined ? activeClient.targetCategoryQuotas['Globale'] : activeClient.targetCountGlobale) === -1 : false,
                                   Album: activeClient ? (activeClient.targetCategoryQuotas?.['Album'] !== undefined ? activeClient.targetCategoryQuotas['Album'] : activeClient.targetCountAlbum) === -1 : false,
                                 }}
+                                categoryCounts={activeClient ? {
+                                  Dot: getActiveClientPhotos().filter(p => activeClient.selectedPhotoIds.includes(p.id) && (p.category === 'Dot' || p.category?.toLowerCase() === 'dot')).length,
+                                  Globale: getActiveClientPhotos().filter(p => activeClient.selectedPhotoIds.includes(p.id) && p.category?.toLowerCase() !== 'album' && p.category?.toLowerCase() !== 'dot').length,
+                                  Album: getActiveClientPhotos().filter(p => activeClient.selectedPhotoIds.includes(p.id) && (p.category === 'Album' || p.category?.toLowerCase() === 'album')).length,
+                                } : undefined}
                               />
                             </div>
                           </div>

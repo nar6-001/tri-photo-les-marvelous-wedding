@@ -189,26 +189,18 @@ export default function SwipeCard({ profile, onSwipe, active, isTop = true, stac
             {profile.distance}
           </motion.div>
 
-          <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/95 via-black/55 to-transparent pt-28 pb-26 px-4 flex flex-col items-center justify-end text-center z-20">
-            <motion.span
+          <div className="absolute bottom-3 inset-x-0 flex flex-col items-center justify-end text-center z-20 pointer-events-none px-4">
+            <motion.div
               key={profile.name}
-              initial={{ opacity: 0, y: 10 }}
+              initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
-              className="font-serif-display font-bold text-2xl text-white drop-shadow-md tracking-tight"
+              className="bg-black/80 backdrop-blur-md border border-white/25 text-white px-3.5 py-1 rounded-full text-xs font-mono font-bold tracking-wider shadow-xl flex items-center gap-2 notranslate pointer-events-auto"
+              translate="no"
             >
-              {profile.name}
-            </motion.span>
-            <div className="flex items-center gap-2 mt-2 text-[10px] text-brand-sand/95 font-bold tracking-widest uppercase">
-              <span>{profile.status}</span>
-              <span className="w-1.5 h-1.5 rounded-full bg-brand-gold animate-pulse" />
-              <button
-                onClick={(e) => { e.stopPropagation(); setShowDetails(true); }}
-                className="text-brand-gold hover:text-white underline transition-colors cursor-pointer font-extrabold tracking-wider"
-              >
-                En savoir plus
-              </button>
-            </div>
+              <span className="text-brand-gold">📷</span>
+              <span>{profile.name}</span>
+            </motion.div>
           </div>
         </div>
       </motion.div>

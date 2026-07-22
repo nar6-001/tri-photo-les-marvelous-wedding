@@ -148,6 +148,34 @@ html.dark {
   color-scheme: dark;
 }
 
+html.dark .text-brand-olive,
+html.dark .text-brand-dark {
+  color: var(--text-strong, #FDFBF8) !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) {
+    --bg-app: #1A1A1A;
+    --bg-panel: #232323;
+    --bg-subtle: #2A2A2A;
+    --bg-ivory: #1A1A1A;
+    --bg-stone: #333333;
+
+    --text-strong: #FDFBF8;
+    --text-soft: #B8B2A6;
+    --text-muted: #8A8378;
+
+    --accent: #D4B58F;
+    --border: #333333;
+    color-scheme: dark;
+  }
+
+  :root:not(.light) .text-brand-olive,
+  :root:not(.light) .text-brand-dark {
+    color: var(--text-strong, #FDFBF8) !important;
+  }
+}
+
 /* === Custom styles === */
 html, body {
   height: 100%;
