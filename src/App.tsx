@@ -116,7 +116,7 @@ export default function App() {
   const handleVerifyPasscode = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const clean = adminPasscode.trim().toLowerCase();
-    if (clean === 'admin' || clean === '1234') {
+    if (clean === '0237' || clean === 'adgère237' || clean === 'adgere237') {
       setIsAdminAuthorized(true);
       localStorage.setItem('wedding_admin_authorized', 'true');
       setIsPasscodeModalOpen(false);
@@ -141,22 +141,16 @@ export default function App() {
         if (db && db.globalPhotos && db.clientsList) {
           setGlobalPhotos(db.globalPhotos);
           
-          // Fail-safe merge: combine local & server selections so no selection is lost on refresh
           const localClients = getClients();
           const localMap = new Map(localClients.map(c => [c.id, c]));
-          let needsPush = false;
 
           const mergedClients = db.clientsList.map((serverC: any) => {
             const localC = localMap.get(serverC.id);
             if (!localC) return serverC;
 
             const mergedSelected = Array.from(new Set([...(serverC.selectedPhotoIds || []), ...(localC.selectedPhotoIds || [])]));
-            if (mergedSelected.length > (serverC.selectedPhotoIds || []).length) {
-              needsPush = true;
-            }
-
-            const mergedDisliked = Array.from(new Set([...(serverC.dislikedPhotoIds || []), ...(localC.dislikedPhotoIds || [])]))
-              .filter(id => !mergedSelected.includes(id));
+            const mergedDisliked = Array.from(new Set([...(serverC.dislikedPhotoIds || [])]))
+              .filter((id: string) => !mergedSelected.includes(id));
 
             const mergedComments = {
               ...(localC.photoComments || {}),
@@ -173,35 +167,18 @@ export default function App() {
               selectedPhotoIds: mergedSelected,
               dislikedPhotoIds: mergedDisliked,
               photoComments: mergedComments,
-              photoChoices: mergedChoices,
-              sortingStartTime: serverC.sortingStartTime || localC.sortingStartTime,
-              sortingEndTime: serverC.sortingEndTime || localC.sortingEndTime,
-              sortingDurationFormatted: serverC.sortingDurationFormatted || localC.sortingDurationFormatted
+              photoChoices: mergedChoices
             };
           });
 
-          setClientsList(mergedClients);
           saveClients(mergedClients);
-          localStorage.setItem('wedding_global_photos', JSON.stringify(db.globalPhotos));
-
-          if (needsPush) {
-            fetch("/api/clients", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ clientsList: mergedClients })
-            }).catch(() => {});
-          }
-
-          if (db.categoryLabels) {
-            setCategoryLabels(db.categoryLabels);
-            saveCategoryLabels(db.categoryLabels);
-          }
+          setClientsList(mergedClients);
         }
       })
       .catch(err => { /* offline fallback */ });
   }, []);
 
-  // Detect /adgère237 or /admin in URL
+  // Detect /adgère237 or /admin in URL vs Client URL
   useEffect(() => {
     const rawPath = window.location.pathname;
     const rawSearch = window.location.search;
@@ -223,11 +200,17 @@ export default function App() {
       decodedPath.endsWith('/admin') ||
       decodedSearch.includes('admin=true');
 
+    const hasClientParam = rawSearch.includes('client=') || decodedSearch.includes('client=');
+
     if (isAdgereRoute) {
       setIsAdminAuthorized(true);
       localStorage.setItem('wedding_admin_authorized', 'true');
       setIsAdminModeState(true);
       setIsAdminMode(true);
+    } else if (hasClientParam) {
+      // Force Client View when accessing via ?client= URL
+      setIsAdminModeState(false);
+      setIsAdminMode(false);
     }
   }, []);
 
