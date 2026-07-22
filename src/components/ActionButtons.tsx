@@ -17,6 +17,7 @@ interface ActionButtonsProps {
     Dot?: number;
     Globale?: number;
     Album?: number;
+    Disliked?: number;
     [key: string]: number | undefined;
   };
 }
@@ -89,35 +90,36 @@ export default function ActionButtons({ onSwipe, onUndo, canUndo, onCommentClick
   const dotCount = categoryCounts?.Dot || 0;
   const classiqueCount = categoryCounts?.Globale || 0;
   const albumCount = categoryCounts?.Album || 0;
+  const dislikedCount = categoryCounts?.Disliked || 0;
 
   return (
-    <div className="flex items-center justify-center gap-3 w-full px-2 sm:px-4 select-none shrink-0 py-4 bg-transparent mt-1 z-30">
-      <div className="flex flex-col items-center gap-1.5">
+    <div className="flex items-center justify-center gap-2.5 sm:gap-3 w-full px-1 sm:px-3 select-none shrink-0 py-1 bg-transparent my-0 z-30">
+      <div className="flex flex-col items-center gap-1">
         <MagneticButton
           onClick={onUndo}
           disabled={!canUndo || disabled}
           ariaLabel="Revenir à la photo précédente"
-          className={`w-11 h-11 flex items-center justify-center rounded-full bg-brand-cream hover:bg-brand-sand border-2 border-brand-sage/40 text-brand-gold shadow-md duration-300 ${
+          className={`w-10 h-10 flex items-center justify-center rounded-full bg-brand-cream hover:bg-brand-sand border-2 border-brand-sage/40 text-brand-gold shadow-md duration-300 ${
             !canUndo || disabled ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'
           }`}
           title="Revenir à la photo précédente"
         >
-          <RotateCcw className="w-4.5 h-4.5 stroke-[2.5]" />
+          <RotateCcw className="w-4 h-4 stroke-[2.5]" />
         </MagneticButton>
-        <span className="text-[8.5px] font-extrabold uppercase text-brand-sage tracking-wider">Retour</span>
+        <span className="text-[8px] font-extrabold uppercase text-brand-sage tracking-wider">Retour</span>
       </div>
 
-      <div className="flex flex-col items-center gap-1.5">
+      <div className="flex flex-col items-center gap-1">
         <MagneticButton
           onClick={() => onSwipe('left')}
           disabled={disabled}
           ariaLabel="Passer / Ignorer ce cliché"
-          className="w-14 h-14 flex items-center justify-center rounded-full bg-white hover:bg-red-50/50 border-2 border-red-200/60 hover:border-red-400/50 text-red-500 shadow-lg duration-300 cursor-pointer"
+          className="w-12 h-12 flex items-center justify-center rounded-full bg-white hover:bg-red-50/50 border-2 border-red-200/60 hover:border-red-400/50 text-red-500 shadow-md duration-300 cursor-pointer"
           title="Passer / Ignorer"
         >
-          <X className="w-7 h-7 stroke-[3]" />
+          <X className="w-6 h-6 stroke-[3]" />
         </MagneticButton>
-        <span className="text-[8.5px] font-extrabold uppercase text-red-400 tracking-wider">Écarter</span>
+        <span className="text-[8px] font-extrabold uppercase text-red-400 tracking-wider">Écarter ({dislikedCount})</span>
       </div>
 
       {!disabledCategories?.Dot && (
@@ -131,11 +133,6 @@ export default function ActionButtons({ onSwipe, onUndo, canUndo, onCommentClick
             title="Sélection Dot"
           >
             <span className="font-serif-display font-black text-[20px] leading-none notranslate" translate="no">D</span>
-            {dotCount > 0 && (
-              <span className="absolute -top-1 -right-1 bg-[#5C2E0E] text-white text-[9px] font-black rounded-full min-w-5 h-5 px-1 flex items-center justify-center shadow-sm border border-white">
-                {dotCount}
-              </span>
-            )}
           </MagneticButton>
           <span className="text-[8.5px] font-extrabold uppercase text-[#C9744E] tracking-wider font-mono">
             Dot ({dotCount})
@@ -154,11 +151,6 @@ export default function ActionButtons({ onSwipe, onUndo, canUndo, onCommentClick
             title="Retouche classique"
           >
             <span className="font-serif-display font-black text-[20px] leading-none notranslate" translate="no">C</span>
-            {classiqueCount > 0 && (
-              <span className="absolute -top-1 -right-1 bg-[#2D4A1F] text-white text-[9px] font-black rounded-full min-w-5 h-5 px-1 flex items-center justify-center shadow-sm border border-white">
-                {classiqueCount}
-              </span>
-            )}
           </MagneticButton>
           <span className="text-[8.5px] font-extrabold uppercase text-[#4A6B3A] tracking-wider font-mono">
             Classique ({classiqueCount})
@@ -182,11 +174,6 @@ export default function ActionButtons({ onSwipe, onUndo, canUndo, onCommentClick
               title="Ajouter à l'album"
             >
               <span className="font-serif-display font-black text-[26px] leading-none notranslate" translate="no">A</span>
-              {albumCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-amber-500 text-white text-[10px] font-black rounded-full min-w-5.5 h-5.5 px-1 flex items-center justify-center shadow-sm border border-white">
-                  {albumCount}
-                </span>
-              )}
             </MagneticButton>
           </motion.div>
           <span className="text-[8.5px] font-extrabold uppercase text-brand-olive tracking-wider font-mono">
@@ -194,19 +181,6 @@ export default function ActionButtons({ onSwipe, onUndo, canUndo, onCommentClick
           </span>
         </div>
       )}
-
-      <div className="flex flex-col items-center gap-1.5">
-        <MagneticButton
-          onClick={onCommentClick}
-          disabled={disabled}
-          ariaLabel="Laisser un mot"
-          className="w-11 h-11 flex items-center justify-center rounded-full bg-brand-cream hover:bg-brand-sand border-2 border-brand-sage/30 text-emerald-650 shadow-md duration-300 cursor-pointer"
-          title="Laisser un mot"
-        >
-          <MessageSquare className="w-4.5 h-4.5 stroke-[2.5] text-brand-olive" />
-        </MagneticButton>
-        <span className="text-[8.5px] font-extrabold uppercase text-brand-sage tracking-wider">Note</span>
-      </div>
     </div>
   );
 }

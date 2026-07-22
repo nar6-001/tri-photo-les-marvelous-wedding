@@ -1174,7 +1174,7 @@ export default function App() {
 
                         {currentPhoto && (
                           <div className="absolute bottom-3 inset-x-0 z-30 pointer-events-auto" ref={likeBtnRef}>
-                            <div className="max-w-md mx-auto bg-[var(--bg-panel)]/85 backdrop-blur-md border border-brand-sand/60 rounded-2xl shadow-lg py-2 px-3">
+                            <div className="max-w-md mx-auto bg-[var(--bg-panel)]/90 backdrop-blur-md border border-brand-sand/60 rounded-2xl shadow-lg py-1 px-2 overflow-hidden">
                               <ActionButtons
                                 onSwipe={handleSwipeAction}
                                 onUndo={handleUndoAction}
@@ -1189,7 +1189,8 @@ export default function App() {
                                 categoryCounts={activeClient ? {
                                   Dot: getActiveClientPhotos().filter(p => activeClient.selectedPhotoIds.includes(p.id) && (p.category === 'Dot' || p.category?.toLowerCase() === 'dot')).length,
                                   Globale: getActiveClientPhotos().filter(p => activeClient.selectedPhotoIds.includes(p.id) && p.category?.toLowerCase() !== 'album' && p.category?.toLowerCase() !== 'dot').length,
-                                  Album: getActiveClientPhotos().filter(p => activeClient.selectedPhotoIds.includes(p.id) && (p.category === 'Album' || p.category?.toLowerCase() === 'album')).length,
+                                  Album: activeClient.selectedPhotoIds.length,
+                                  Disliked: activeClient.dislikedPhotoIds.length,
                                 } : undefined}
                               />
                             </div>

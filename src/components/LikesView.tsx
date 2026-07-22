@@ -474,43 +474,6 @@ function PolaroidCard({
               <CategoryChip category={photo.category} theme={theme} />
             </div>
           </div>
-
-          {isFavorite && (
-            <div className="mt-2.5 pt-2.5 border-t border-dashed border-brand-sand/75 flex-1 flex flex-col justify-end">
-              {isEditing ? (
-                <div className="space-y-1.5">
-                  <textarea
-                    rows={2}
-                    value={commentInputText}
-                    onChange={(e) => setCommentInputText(e.target.value)}
-                    placeholder="Consigne de retouche..."
-                    className="w-full bg-brand-cream border border-brand-sand rounded-lg p-2 text-[10.5px] text-brand-olive focus:outline-none focus:border-brand-gold resize-none"
-                  />
-                  <div className="flex gap-1 justify-end">
-                    <button type="button" onClick={onCancelEdit} className="bg-[var(--bg-panel)] border border-brand-sand hover:bg-brand-cream text-brand-sage text-[9px] font-bold px-2.5 py-1 rounded uppercase tracking-wider cursor-pointer">Annuler</button>
-                    <button type="button" onClick={onSaveEdit} className="bg-brand-olive text-brand-cream text-[9px] font-bold px-3 py-1 rounded uppercase tracking-wider cursor-pointer">Valider</button>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-2 flex flex-col justify-end h-full">
-                  {photoComment ? (
-                    <div className="bg-brand-cream/40 border border-brand-sand/40 p-2 rounded-lg text-left">
-                      <span className="text-[8px] font-extrabold uppercase text-brand-gold tracking-wide block leading-none mb-1">Consigne de retouche :</span>
-                      <p className="text-[10px] text-brand-sage italic leading-normal font-serif-display select-text">"{photoComment}"</p>
-                    </div>
-                  ) : (
-                    <span className="text-[9px] text-brand-sage/75 italic block">Aucune consigne rédigée pour cette photo.</span>
-                  )}
-                  {!isLocked && (
-                    <button type="button" onClick={onStartEdit} className="inline-flex items-center gap-1 text-[9px] font-extrabold text-brand-olive hover:text-brand-gold cursor-pointer uppercase tracking-wider leading-none self-start">
-                      <Edit2 className="w-2.5 h-2.5" />
-                      {photoComment ? 'Modifier la consigne' : 'Ajouter une consigne de retouche'}
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
         </div>
       </motion.div>
     );
@@ -618,43 +581,6 @@ function PolaroidCard({
           theme={theme}
         />
       </div>
-
-      {isFavorite && (
-        <div className="mt-2.5 pt-2.5 border-t border-dashed border-brand-sand/75 text-left flex-1 flex flex-col justify-end">
-          {isEditing ? (
-            <div className="space-y-1.5">
-              <textarea
-                rows={2}
-                value={commentInputText}
-                onChange={(e) => setCommentInputText(e.target.value)}
-                placeholder="Consigne de retouche..."
-                className="w-full bg-brand-cream border border-brand-sand rounded-lg p-1.5 text-[9.5px] text-brand-olive focus:outline-none focus:border-brand-gold resize-none"
-              />
-              <div className="flex gap-1 justify-end">
-                <button type="button" onClick={onCancelEdit} className="bg-[var(--bg-panel)] border border-brand-sand hover:bg-brand-cream text-brand-sage text-[8px] font-bold px-2 py-1 rounded uppercase tracking-wider cursor-pointer">Annuler</button>
-                <button type="button" onClick={onSaveEdit} className="bg-brand-olive text-brand-cream text-[8px] font-bold px-2.5 py-1 rounded uppercase tracking-wider flex items-center gap-0.5 cursor-pointer">Valider</button>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-1 flex flex-col justify-end h-full">
-              {photoComment ? (
-                <div className="bg-brand-cream/40 border border-brand-sand/40 p-1.5 rounded-lg text-left">
-                  <span className="text-[7.5px] font-extrabold uppercase text-brand-gold tracking-wide block leading-none mb-1">Demande :</span>
-                  <p className="text-[9.5px] text-brand-sage italic leading-tight font-serif-display select-text">"{photoComment}"</p>
-                </div>
-              ) : (
-                <span className="text-[8.5px] text-brand-sage italic block">Aucune consigne rédigée.</span>
-              )}
-              {!isLocked && (
-                <button type="button" onClick={onStartEdit} className="mt-1 inline-flex items-center gap-1 text-[8.5px] font-extrabold text-brand-olive hover:text-brand-gold cursor-pointer uppercase tracking-wider leading-none">
-                  <Edit2 className="w-2.5 h-2.5" />
-                  {photoComment ? 'Modifier consigne' : 'Écrire une consigne'}
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-      )}
     </motion.div>
   );
 }
