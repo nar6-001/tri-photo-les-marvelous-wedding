@@ -5,7 +5,7 @@ import {
   Check, AlertCircle, RefreshCw, Key, HelpCircle, ArrowLeft, Bookmark,
   MessageSquare, Lock, Unlock, Link as LinkIcon, Filter, Camera, FileImage,
   FolderOpen, Send, Copy, Search, Calendar, Globe, X, ZoomIn, Clock, ChevronLeft, ChevronRight,
-  Command, Pin, Bell, Eye, EyeOff, Hash, MoreVertical, Sparkles, Tag, Star, Edit2, Archive, Terminal
+  Command, Pin, Bell, Eye, EyeOff, Hash, MoreVertical, Sparkles, Tag, Star, Edit2, Archive, Terminal, Share2
 } from 'lucide-react';
 import ZoomLightbox from './ZoomLightbox';
 import { SmartImage, ConfirmModal } from './Shared';
