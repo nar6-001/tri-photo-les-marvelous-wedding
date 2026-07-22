@@ -102,28 +102,28 @@ const FORMULA_GROUPS = [
         name: 'Formule Simple',
         price: '270 000 FCFA',
         description: '400 photos Classique/Globale + 1 Agrandissement',
-        quotas: { total: 400, Dot: 0, Globale: 400, Album: 0, Agrandissement: 1 }
+        quotas: { total: 401, Dot: 0, Globale: 400, Album: 0, Agrandissement: 1 }
       },
       {
         id: 'cm-premium',
         name: 'Formule Premium',
         price: '325 000 FCFA',
         description: '500 photos Classique/Globale + 1 Agrandissement',
-        quotas: { total: 500, Dot: 0, Globale: 500, Album: 0, Agrandissement: 1 }
+        quotas: { total: 501, Dot: 0, Globale: 500, Album: 0, Agrandissement: 1 }
       },
       {
         id: 'cm-complete',
         name: 'Formule Complete',
         price: '490 000 FCFA',
         description: '600 photos Classique/Globale + 100 Album + 1 Agrandissement',
-        quotas: { total: 600, Dot: 0, Globale: 600, Album: 100, Agrandissement: 1 }
+        quotas: { total: 701, Dot: 0, Globale: 600, Album: 100, Agrandissement: 1 }
       },
       {
         id: 'cm-reve',
         name: 'Formule de Reve',
         price: '799 000 FCFA',
         description: '800 photos Classique/Globale + 120 Album + 1 Agrandissement + Dot',
-        quotas: { total: 800, Dot: 0, Globale: 800, Album: 120, Agrandissement: 1 }
+        quotas: { total: 921, Dot: 0, Globale: 800, Album: 120, Agrandissement: 1 }
       }
     ]
   },
@@ -135,21 +135,21 @@ const FORMULA_GROUPS = [
         name: 'Formule Classique',
         price: '3 000 EUR',
         description: '550 photos Classique/Globale + 120 Album',
-        quotas: { total: 550, Dot: 0, Globale: 550, Album: 120, Agrandissement: 0 }
+        quotas: { total: 671, Dot: 0, Globale: 550, Album: 120, Agrandissement: 0 }
       },
       {
         id: 'fr-complete',
         name: 'Formule Complete',
         price: '4 500 EUR',
         description: '700 photos Classique/Globale + 100 Album',
-        quotas: { total: 700, Dot: 0, Globale: 700, Album: 100, Agrandissement: 0 }
+        quotas: { total: 801, Dot: 0, Globale: 700, Album: 100, Agrandissement: 0 }
       },
       {
         id: 'fr-reve',
         name: 'Formule de Reve',
         price: '6 000 EUR',
         description: '800 photos Classique/Globale + 130 Album',
-        quotas: { total: 800, Dot: 0, Globale: 800, Album: 130, Agrandissement: 0 }
+        quotas: { total: 931, Dot: 0, Globale: 800, Album: 130, Agrandissement: 0 }
       }
     ]
   }
