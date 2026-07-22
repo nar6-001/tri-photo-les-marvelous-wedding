@@ -82,7 +82,7 @@ export default function SwipeCard({ profile, onSwipe, active, isTop = true, stac
         return { opacity: 0, scale: 0.9 };
       }}
       transition={{ type: "spring", damping: 22, stiffness: 240 }}
-      className={`absolute inset-0 flex flex-col justify-center items-center ${isTop ? "z-10" : "z-0"} p-0 pointer-events-none`}
+      className={`absolute inset-0 flex flex-col justify-center items-center ${isTop ? "z-10" : "z-0"} p-0 sm:p-2 md:p-4 pointer-events-none`}
     >
       <motion.div
         id={`card-${profile.id}`}
@@ -92,7 +92,7 @@ export default function SwipeCard({ profile, onSwipe, active, isTop = true, stac
         onDragEnd={handleDragEnd}
         style={isTop && active ? { x, y, rotate, opacity, zIndex: liftZ } : {}}
         transition={{ type: 'spring', damping: 24, stiffness: 280 }}
-        className={`w-full h-full rounded-none overflow-hidden bg-[#EFECE6] p-0 flex flex-col ${isTop ? 'cursor-grab active:cursor-grabbing' : ''} select-none relative pointer-events-auto`}
+        className={`w-full h-full max-w-full sm:max-w-md md:max-w-lg lg:max-w-xl max-h-full sm:max-h-[82vh] rounded-none sm:rounded-3xl shadow-none sm:shadow-2xl overflow-hidden bg-[#EFECE6] p-0 flex flex-col ${isTop ? 'cursor-grab active:cursor-grabbing' : ''} select-none relative pointer-events-auto border-0 sm:border border-brand-sand/70`}
       >
         {/* Stamps */}
         {isTop && active && (

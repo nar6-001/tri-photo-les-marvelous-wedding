@@ -998,7 +998,7 @@ export default function App() {
                       <span>Album de Noces</span>
                       {isAdminAuthorized ? <Unlock className="w-2.5 h-2.5 text-emerald-650" /> : <Key className="w-2.5 h-2.5 opacity-65 text-brand-gold" />}
                     </button>
-                    <span className="text-base sm:text-lg font-serif-display font-black text-brand-olive mt-0.5 leading-snug truncate max-w-full">{activeClient.name}</span>
+                    <span className="text-xl sm:text-2xl font-serif-display font-black text-brand-olive mt-0.5 leading-tight truncate max-w-full">{activeClient.name}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <button
