@@ -226,6 +226,50 @@ export default function AdminView({
     setEditableCategoryLabels({ ...categoryLabels });
   }, [categoryLabels]);
 
+  useEffect(() => {
+    // Auto-fix existing clients whose targetCount still holds old formula sums (e.g. 931 -> 800 for Formule de Rêve)
+    if (!clients || clients.length === 0) return;
+    let hasChanges = false;
+    const updatedClients = clients.map(client => {
+      if (client.formula) {
+        const formulaObj = FORMULAS.find(f => f.id === client.formula);
+        if (formulaObj && client.targetCount !== formulaObj.quotas.total) {
+          hasChanges = true;
+          return {
+            ...client,
+            targetCount: formulaObj.quotas.total
+          };
+        }
+      } else if ([931, 921, 801, 701, 671, 501, 401].includes(client.targetCount)) {
+        const fixedTotal = client.targetCount === 931 ? 800 :
+                          client.targetCount === 921 ? 800 :
+                          client.targetCount === 801 ? 700 :
+                          client.targetCount === 701 ? 600 :
+                          client.targetCount === 671 ? 550 :
+                          client.targetCount === 501 ? 500 :
+                          client.targetCount === 401 ? 400 : client.targetCount;
+        if (fixedTotal !== client.targetCount) {
+          hasChanges = true;
+          return {
+            ...client,
+            targetCount: fixedTotal
+          };
+        }
+      }
+      return client;
+    });
+
+    if (hasChanges) {
+      setClients(updatedClients);
+      saveClients(updatedClients);
+      fetch("/api/clients", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ clientsList: updatedClients })
+      }).catch(err => console.log("Local Database Mode Active: ", err));
+    }
+  }, [clients]);
+
   // Form states - Client creation
   const [newClientName, setNewClientName] = useState('');
   const [newClientQuota, setNewClientQuota] = useState('5');
