@@ -1975,24 +1975,29 @@ export default function AdminView({
             ? Math.min(100, Math.round((targetClient.selectedPhotoIds.length / targetClient.targetCount) * 100))
             : 0;
             
-          const currentCategoryLabels: Record<string, string> = {
-            ...categoryLabels,
-            ...(targetClient.categoryLabels || {})
-          };
-          photos.forEach(p => {
-            if ((!p.clientId || p.clientId === targetClient.id) && p.category) {
-              if (!currentCategoryLabels[p.category]) {
-                let label = p.category;
-                if (label.startsWith('custom-')) {
-                  const parts = label.split('-');
-                  label = parts.slice(1, parts.length - 1).join(' ') || p.category;
-                  label = label.charAt(0).toUpperCase() + label.slice(1);
-                }
-                currentCategoryLabels[p.category] = label;
+          // Strictly get photos belonging to this client
+          const hasSpecificPhotos = photos.some(p => p.clientId === targetClient.id);
+          const hasAnyClientPhotos = photos.some(p => !!p.clientId);
+          const clientPhotos = hasSpecificPhotos 
+            ? photos.filter(p => p.clientId === targetClient.id)
+            : (hasAnyClientPhotos ? [] : photos.filter(p => !p.clientId));
+
+          // Strictly build category labels for this couple
+          const currentCategoryLabels: Record<string, string> = (targetClient.categoryLabels && Object.keys(targetClient.categoryLabels).length > 0)
+            ? { ...targetClient.categoryLabels }
+            : { ...categoryLabels };
+
+          clientPhotos.forEach(p => {
+            if (p.category && !currentCategoryLabels[p.category]) {
+              let label = p.category;
+              if (label.startsWith('custom-')) {
+                const parts = label.split('-');
+                label = parts.slice(1, parts.length - 1).join(' ') || p.category;
+                label = label.charAt(0).toUpperCase() + label.slice(1);
               }
+              currentCategoryLabels[p.category] = label;
             }
           });
-          const clientPhotos = photos.filter(p => !p.clientId || p.clientId === targetClient.id);
           const coverPhoto = photos.find(p => p.id === targetClient.coverPhotoId) || photos[0];
 
           return (

@@ -243,42 +243,29 @@ export default function App() {
     : [];
 
   const currentCategoryLabels = useMemo(() => {
-    const merged: Record<string, string> = (activeClient?.categoryLabels && Object.keys(activeClient.categoryLabels).length > 0)
-      ? { ...activeClient.categoryLabels }
-      : { ...categoryLabels };
+    const merged: Record<string, string> = {
+      ...categoryLabels,
+      ...(activeClient?.categoryLabels || {})
+    };
 
     if (activeClient) {
-      const hasSpecific = globalPhotos.some(p => p.clientId === activeClient.id);
-      const hasAnySpecific = globalPhotos.some(p => !!p.clientId);
-      const clientPhotos = hasSpecific 
-        ? globalPhotos.filter(p => p.clientId === activeClient.id) 
-        : (hasAnySpecific ? [] : globalPhotos.filter(p => !p.clientId));
-
-      clientPhotos.forEach(p => {
-        if (p.category && !merged[p.category]) {
-          let label = p.category;
-          if (label.startsWith('custom-')) {
-            const parts = label.split('-');
-            label = parts.slice(1, parts.length - 1).join(' ') || p.category;
-            label = label.charAt(0).toUpperCase() + label.slice(1);
+      globalPhotos.forEach(p => {
+        if ((!p.clientId || p.clientId === activeClient.id) && p.category) {
+          if (!merged[p.category]) {
+            let label = p.category;
+            if (label.startsWith('custom-')) {
+              const parts = label.split('-');
+              label = parts.slice(1, parts.length - 1).join(' ') || p.category;
+              label = label.charAt(0).toUpperCase() + label.slice(1);
+            }
+            merged[p.category] = label;
           }
-          merged[p.category] = label;
         }
       });
     }
 
     return merged;
   }, [categoryLabels, activeClient, globalPhotos]);
-
-  const getActiveClientPhotos = useCallback(() => {
-    if (!activeClient) return [];
-    const specific = globalPhotos.filter(p => p.clientId === activeClient.id);
-    if (specific.length > 0) return specific;
-    const hasAnySpecific = globalPhotos.some(p => !!p.clientId);
-    if (hasAnySpecific) return [];
-    return globalPhotos.filter(p => !p.clientId);
-  }, [activeClient, globalPhotos]);
-
   const firstCat = Object.keys(currentCategoryLabels)[0] || 'Dot';
   const secondCat = Object.keys(currentCategoryLabels)[1] || 'Globale';
   const thirdCat = Object.keys(currentCategoryLabels)[2] || 'Album';
@@ -287,9 +274,9 @@ export default function App() {
   const globaleCount = selectedPhotos.filter(p => p.category === secondCat).length;
   const albumCount = selectedPhotos.filter(p => p.category === thirdCat).length;
 
-  const dotTotal = activeClient ? getActiveClientPhotos().filter(p => p.category === firstCat).length : 0;
-  const globaleTotal = activeClient ? getActiveClientPhotos().filter(p => p.category === secondCat).length : 0;
-  const albumTotal = activeClient ? getActiveClientPhotos().filter(p => p.category === thirdCat).length : 0;
+  const dotTotal = activeClient ? globalPhotos.filter(p => (!p.clientId || p.clientId === activeClient.id) && p.category === firstCat).length : 0;
+  const globaleTotal = activeClient ? globalPhotos.filter(p => (!p.clientId || p.clientId === activeClient.id) && p.category === secondCat).length : 0;
+  const albumTotal = activeClient ? globalPhotos.filter(p => (!p.clientId || p.clientId === activeClient.id) && p.category === thirdCat).length : 0;
 
   useEffect(() => {
     if (!activeClient && clientsList.length > 0) {
@@ -317,7 +304,7 @@ export default function App() {
 
   const getClientPhotoQueue = (): WeddingPhoto[] => {
     if (!activeClient) return [];
-    let filtered = getActiveClientPhotos();
+    let filtered = globalPhotos.filter(p => !p.clientId || p.clientId === activeClient.id);
     if (activeCategory !== 'Tout') {
       filtered = filtered.filter(p => p.category === activeCategory);
     }
