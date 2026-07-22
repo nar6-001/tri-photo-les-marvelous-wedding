@@ -339,7 +339,7 @@ export default function AdminView({
   const [showQrCode, setShowQrCode] = useState<boolean>(false);
 
   const generateTemplateMessage = (client: ClientAccount, template: 'welcome' | 'reminder' | 'done', slug: string) => {
-    const link = `${window.location.origin}${window.location.pathname}?client=${slug}`;
+    const link = `${window.location.origin}/?client=${slug}`;
     if (template === 'reminder') {
       const deadlineText = client.deadline ? ` avant le ${new Date(client.deadline).toLocaleDateString('fr-FR')}` : '';
       return `Bonjour ${client.name} 👋,\n\nUn petit rappel amical pour votre sélection de photos ! N'oubliez pas de choisir vos ${client.targetCount} clichés préférés pour votre album${deadlineText} :\n\n👉 ${link}\n\nSi vous avez la moindre question, nous sommes à votre entière disposition.\n\nÀ très vite,\nMaison Marvel`;
@@ -1493,7 +1493,7 @@ export default function AdminView({
       setCustomShareMessage('');
     }
 
-    const accessUrl = `${window.location.origin}${window.location.pathname}?client=${clientId}`;
+    const accessUrl = `${window.location.origin}/?client=${clientId}`;
     
     const triggerSuccessFeedback = () => {
       setCopiedClientId(clientId);
@@ -6874,7 +6874,7 @@ export default function AdminView({
       {/* SHARE ACCESS MODAL */}
       {shareModalClient && (() => {
         const currentSlug = shareModalClient.id;
-        const fullLinkUrl = `${window.location.origin}${window.location.pathname}?client=${currentSlug}`;
+        const fullLinkUrl = `${window.location.origin}/?client=${currentSlug}`;
         const qrCodeImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=10&data=${encodeURIComponent(fullLinkUrl)}`;
         const effectiveMessage = customShareMessage || generateTemplateMessage(shareModalClient, activeShareTemplate, currentSlug);
 
